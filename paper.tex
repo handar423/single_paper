@@ -1,0 +1,188 @@
+\documentclass[lettersize,journal]{IEEEtran}
+\usepackage{amsmath,amsfonts}
+% \usepackage{algorithmic}
+\usepackage{array}
+\usepackage[caption=false,font=normalsize,labelfont=sf,textfont=sf]{subfig}
+\usepackage{textcomp}
+\usepackage{stfloats}
+\usepackage{url}
+\usepackage{verbatim}
+\usepackage{graphicx}
+\usepackage{cite}
+
+% to be able to draw some self-contained figs
+\usepackage{tikz}
+
+% inlined bib file
+\usepackage{filecontents}
+
+\usepackage[english]{babel}
+\usepackage{blindtext}
+% \usepackage[toc,page]{appendix}
+
+\usepackage{xcolor}
+
+\usepackage{color}
+\usepackage{multirow}
+\def\UrlBreaks{\do\/\do-}
+% \usepackage[ruled,linesnumbered, vlined]{algorithm2e}
+\usepackage{booktabs}
+\let\labelindent\relax
+\usepackage{enumitem} % for concise list env
+\usepackage{xspace}
+\usepackage{latexsym}
+\usepackage{tabularx}
+\usepackage{balance}
+\usepackage{pifont}% http://ctan.org/pkg/pifont
+\usepackage{soul}
+\usepackage{siunitx}
+\usepackage{amsthm}
+\usepackage{tikz}
+\usepackage{comment}
+\usepackage{subfloat}
+\usepackage{upgreek}
+\usepackage{threeparttable}
+\usepackage{makecell}
+\usepackage{microtype}
+\usepackage[shortcuts]{extdash}
+\usepackage{footnote}
+\usepackage{mdwlist}
+\usepackage{adjustbox}
+\usepackage{hyperref}
+\hypersetup{
+    colorlinks  =true,
+    urlcolor     = black, %Colour for external hyperlinks
+    linkcolor    = blue, %Colour of internal links
+    citecolor   = blue %Colour of citations
+}
+\usepackage[noend]{algpseudocode}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+\hyphenation{op-tical net-works semi-conduc-tor IEEE-Xplore}
+% updated with editorial comments 8/9/2021
+
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+\newcolumntype{C}[1]{>{\centering\arraybackslash}p{#1}}
+\newcolumntype{R}[1]{>{\raggedleft\arraybackslash}p{#1}}
+
+%% self-defined commands
+\newcommand{\paraf}[1]{\noindent\textbf{#1}}
+\newcommand{\parabf}[1]{\medskip\noindent\textbf{#1}}
+\newcommand{\sysname}{FaaSPR\xspace}
+% \algnewcommand{\LineComment}[1]{\Statex \(\) #1}
+% \algnewcommand\algorithmicforeach{\textbf{foreach}}
+% \algdef{S}[FOR]{ForEach}[1]{\algorithmicforeach\ #1\ \algorithmicdo}
+
+\newcommand{\squishlist}{
+   \begin{list}{$\bullet$}
+    { \setlength{\itemsep}{0pt}      \setlength{\parsep}{3pt}
+      \setlength{\topsep}{3pt}       \setlength{\partopsep}{0pt}
+      \setlength{\leftmargin}{3.5mm} \setlength{\labelwidth}{1em}
+      \setlength{\labelsep}{0.5em} } }
+      
+\newcounter{boxlblcounter}  
+\newcommand{\squishnumlist}{
+  \begin{list}{\arabic{boxlblcounter}.}
+    { \usecounter{boxlblcounter} 
+      \setlength{\itemsep}{0pt}      \setlength{\parsep}{3pt}
+      \setlength{\topsep}{3pt}       \setlength{\partopsep}{0pt}
+      \setlength{\leftmargin}{3.5mm} \setlength{\labelwidth}{1em}
+      \setlength{\labelsep}{0.5em} } }
+
+\newcommand{\squishend}{
+    \end{list}  }
+\newcommand*\circled[1]{\tikz[baseline=(char.base)]{
+  \node[shape=circle,draw,inner sep=1pt] (char) {#1};}}
+
+\newcommand\eg{{\em e.g.,}\xspace}
+\newcommand\etc{{\em etc.}\xspace}
+\newcommand\etal{{\em et al.}\xspace}
+
+\newcommand{\py}[1]{{\color{red}#1}}
+\newcommand{\xin}[1]{{\color{blue}(Xin: #1)}}
+\newcommand{\jiaqi}[1]{{\color{blue}[Jiaqi: #1]}}
+\newcommand{\yunshan}[1]{{\color{black}#1}}
+\newcommand{\todo}[1]{{\color{blue}[TODO: #1]}}
+\newcommand{\xzl}[1]{\textbf{\color{violet}{(Xuanzhe: #1)}}}
+\newcommand{\rui}[1]{\textbf{\color{purple}{(Rui: #1)}}}
+\newcommand{\meng}[1]{{\color{blue}[Meng: #1]}}
+\newcommand{\wm}[1]{{\color{black}#1}}
+\newcommand{\yuxiang}[1]{{\color{blue}(Lin: #1)}}
+\newcommand{\jys}[1]{{\color{blue}#1}}
+\newcommand{\chao}[1]{{\color{orange}{Chao: #1}}}
+
+\algdef{SE}[SUBALG]{Indent}{EndIndent}{}{\algorithmicend\ }%
+\algtext*{Indent}
+\algtext*{EndIndent}
+\algnewcommand\algorithmicforeach{\textbf{for each}}
+\algdef{S}[FOR]{ForEach}[1]{\algorithmicforeach\ #1\ \algorithmicdo}
+
+\begin{document}
+
+\title{\sysname: Latency-oriented Placement and Routing Optimization for Serverless Workflow Processing}
+
+% \author{\pageref{lastpage} pages, \pageref{allpages} pages total}
+\author{Yunshan Jia,
+        Chao Jin,
+        Qing Li,
+        Xuanzhe Liu,~\IEEEmembership{Senior Member,~IEEE,}
+        and Xin Jin,~\IEEEmembership{Senior Member,~IEEE}
+        % <-this % stops a space
+        
+\IEEEcompsocitemizethanks{
+% \vspace{-5pt}
+\IEEEcompsocthanksitem Yunshan Jia, Chao Jin, Xuanzhe Liu, and Xin Jin are with the School of Computer Science, Peking University, Beijing, China.
+\protect
+E-mail: \{jiayunshan;chaojin;liuxuanzhe;xinjinpku\}@pku.edu.cn.
+\IEEEcompsocthanksitem Qing Li is with the School of Computer Science, Beijing University of Posts and Telecommunications, Beijing, China.
+\protect
+E-mail: qingli@bupt.edu.cn.
+
+This work was supported in part by the National Key Research and Development Program of China under Grant 2022YFB4500700, in part by the National Natural Science Foundation of China under Grant 62172008 and 62325201, and in part by the National Natural Science Fund for the Excellent Young Scientists Fund Program (Overseas). (Corresponding author: Xin Jin.)
+}% <-this % stops an unwanted space
+}
+
+% The paper headers
+\markboth{IEEE/ACM Transactions on Networking}%
+{Shell \MakeLowercase{\textit{et al.}}: A Sample Article Using IEEEtran.cls for IEEE Journals}
+
+% \IEEEpubid{0000--0000/00\$00.00~\copyright~2021 IEEE}
+% Remember, if you use this you must call \IEEEpubidadjcol in the second
+% column for its text to clear the IEEEpubid mark.
+
+\maketitle
+
+\input{sections/abstract}
+
+\begin{IEEEkeywords}
+Serverless, scheduling, placement and routing.
+\end{IEEEkeywords}
+
+\input{sections/introduction}
+\input{sections/background}
+\input{sections/overview}
+\input{sections/deisgn}
+\input{sections/implementation}
+\input{sections/experiments}
+\input{sections/related}
+\input{sections/conclusion}
+\label{lastpage}
+% \clearpage
+
+
+% \section*{Acknowledgments}
+% This should be a simple paragraph before the References to thank those individuals and institutions who have supported your work on this article.
+
+\bibliographystyle{myIEEEtran}
+\bibliography{xin}
+
+\input{sections/bio}
+
+\vfill
+\label{allpages}
+
+
+\end{document}
+
+
