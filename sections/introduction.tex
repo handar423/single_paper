@@ -1,21 +1,45 @@
 \section{Introduction}
 \label{sec:introduction}
 
-% 1. insight是1. 用户request资源需求其实是可变的，他和当前固定资源配置方案是有冲突的 
+\todo{Introduction to serverless computing.}
+
+Resource management in serverless computing has been an extensively studied problem, with numerous solutions proposed in the literature\todo{citation}.
+Most existing approaches operate at the function level; that is, resources are allocated to function instances, which are then assigned requests to process.
+A key assumption underlying these approaches is that a serverless function exhibits consistent resource demands across all invocations.
+However, recent analyses of real-world serverless workloads have revealed significant skew in resource consumption across different requests for the same function\todo{citation}.
+Our analysis (\S\ref{sec:demand-analysis}) also confirms that the resource usage of a serverless function can vary up to XXX times\todo{variation} across different inputs.
+Additionally, we find that this input-dependent resource usage is highly predictable, achieving an accuracy of XXX\%\todo{prediction accuracy}.
+
+Concurrently, techniques that allow for dynamic adjustment of a container's resource capacity have been proposed\todo{citation(k8s, escra, etc.)}.
+These techniques make it possible to alter the resource allocation of a running container in-place, thereby avoiding the costly overhead of resource reallocation.
+
+Capitalizing on these developments, we propose a \textit{request-level} resource allocation policy that provisions the exact amount of resources for each request.
+The key idea is to predict the resource demand of each incoming request and dynamically adjust the target container's resource capacity accordingly.
+Such a fine-grained strategy ensures that requests are processed using only the necessary resources, which can significantly reduce cluster-wide resource wastage.
+
+However, realizing an effective request-level resource management system introduces two challenges.
+First, to achieve high resource utilization through dynamic resource reallocation, the system must rely on oversubscription,
+where the sum of maximum possible resources required for colocated containers exceeds the physical capacity of the server.
+Given the high variability in per-request resource demands, a high oversubscription ratio leads to resource contention and frequent container evictions.
+This forces the system to adopt a low oversubscription ratio, negating much of the potential efficiency gains from request-level resource allocation.
+
+Second, dynamic resource adjustment mechanisms introduce non-negligible overhead.
+Specifically, while increasing a container's resource capacity is a relatively fast operation, decreasing it is often much slower.
+For example, reducing the memory capacity of a container requires reclaiming memory pages, which incurs substantial latency.
+As resource adjustment occurs on the critical path of request execution, this latency directly increases the end-to-end request handling time.
+
+To address these challenges, we propose \sysname, a serverless resource manager that allocates resources at the request level.
+To mitigate the risk of eviction from oversubscription, \sysname adopts a XXX\todo{placement algorithm name} placement strategy.
+This strategy classifies requests into distinct tiers based on their predicted resource demands and specializes containers to handle requests from specific tiers.
+Moreover, this strategy incorporates a XXX\todo{Other feature of placement algorithm. E.g., coloring.} technique to maximize server utilization by colocating containers with complementary resource requirements.
 
 
-Serverless and pod resource management in Serverless
+\sysname further tackles the overhead of resource adjustment with a XXX\todo{scheduling algorithm name} request scheduling algorithm.
+This algorithm organizes incoming requests into monotonic queues, where requests are sorted by increasing resource demand.
+By processing the requests in a queue sequentially, a container's resource capacity only needs to be incrementally increased.
+A costly resource-decreasing operation is only required when the system finishes one queue and switches to another with a lower starting resource requirement.
+This design reduces the number of resource-decreasing operations, thereby significantly mitigating its impact on overall latency.
 
-overhead: resource utilization and cold start
+Experiments show that \todo{summary of experiments results.}
 
-current solution and problem: pallete and faascache (other sota)
-
-challenge: 
-% 1. 如何避免intra-func的burst(动态的调度)
-% 2. 任何避免频繁的驱逐（placement）
-
-technique: mention inplace scaling in k8s
-
-performance
-
-contribution
+\todo{summary of contributions.}
