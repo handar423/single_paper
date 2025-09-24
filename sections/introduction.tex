@@ -4,11 +4,14 @@
 \todo{Introduction to serverless computing.}
 
 Resource management in serverless computing has been an extensively studied problem, with numerous solutions proposed in the literature\todo{citation}.
-Most existing approaches operate at the function level; that is, resources are allocated to function instances, which are then assigned requests to process.
+Most existing approaches operate at the function level; that is, resources are allocated to function instances, which further select requests to process.
 A key assumption underlying these approaches is that a serverless function exhibits consistent resource demands across all invocations.
+
 However, recent analyses of real-world serverless workloads have revealed significant skew in resource consumption across different requests for the same function\todo{citation}.
-Our analysis (\S\ref{sec:demand-analysis}) also confirms that the resource usage of a serverless function can vary up to XXX times\todo{variation} across different inputs.
-Additionally, we find that this input-dependent resource usage is highly predictable, achieving an accuracy of XXX\%\todo{prediction accuracy}.
+Our analysis (\S\ref{sec:demand-analysis}) also confirms that the resource usage of a serverless function can vary by up to XXX times\todo{variation} across different requests.
+This high variability leads to significant inefficiencies for conventional, function-level policies.
+To guarantee reliable performance, these policies must provision resources for a function's peak (i.e., worst-case) demand, resulting in substantial resource wastage for the vast majority of less-demanding requests. 
+Additionally, we find that this input-dependent resource usage is not only skewed but also highly predictable, achieving an accuracy of XXX\%\todo{prediction accuracy}.
 
 Concurrently, techniques that allow for dynamic adjustment of a container's resource capacity have been proposed\todo{citation(k8s, escra, etc.)}.
 These techniques make it possible to alter the resource allocation of a running container in-place, thereby avoiding the costly overhead of resource reallocation.
