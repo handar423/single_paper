@@ -64,6 +64,7 @@
 @String{ icpp = "International Conference on Parallel Processing (ICPP)"}
 @String{ kdd = "ACM SIGKDD"}
 @String{ isca = "Conference of the International Speech Communication Association (ISCA)"}
+@String{ sc = "The International Conference for High Performance Computing, Networking, Storage, and Analysis"}
 
 @String{ jan = "January" }
 @String{ feb = "February" }
@@ -7270,12 +7271,169 @@ keywords = {Realtime Support; Containerized Edge Service; Cloud-Native}
   year         = {2020},
 }
 
-@inproceedings{FaaSCache_ASPLOS21,
+@inproceedings{ASPLOS21:FaaSCache,
 author = {Fuerst, Alexander and Sharma, Prateek},
 title = {FaasCache: keeping serverless computing alive with greedy-dual caching},
 year = {2021},
-publisher = {Association for Computing Machinery},
-booktitle = {Proceedings of the 26th ACM International Conference on Architectural Support for Programming Languages and Operating Systems},
+booktitle = asplos,
 pages = {386–400},
 numpages = {15}
+}
+
+@article{CACM19:Rise,
+    author = {Castro, Paul and Ishakian, Vatche and Muthusamy, Vinod and Slominski, Aleksander},
+    title = {The Rise of Serverless Computing},
+    year = {2019},
+    doi = {10.1145/3368454},
+    journal = cacm
+}
+
+@techreport{TR19:Berkeley,
+    Author= {Jonas, Eric and Schleier-Smith, Johann and Sreekanti, Vikram and Tsai, Chia-Che and Khandelwal, Anurag and Pu, Qifan and Shankar, Vaishaal and Menezes Carreira, Joao and Krauth, Karl and Yadwadkar, Neeraja and Gonzalez, Joseph and Popa, Raluca Ada and Stoica, Ion and Patterson, David A.},
+    Title= {Cloud Programming Simplified: A Berkeley View on Serverless Computing},
+    Year= {2019},
+}
+
+@article{CACM21:Serverless,
+author = {Schleier-Smith, Johann and Sreekanti, Vikram and Khandelwal, Anurag and Carreira, Joao and Yadwadkar, Neeraja J. and Popa, Raluca Ada and Gonzalez, Joseph E. and Stoica, Ion and Patterson, David A.},
+title = {What serverless computing is and should become: the next phase of cloud computing},
+year = {2021},
+doi = {10.1145/3406011},
+journal = cacm
+}
+
+@inproceedings{NSDI19:Shuffling,
+    author = {Qifan Pu and Shivaram Venkataraman and Ion Stoica},
+    title = {Shuffling, Fast and Slow: Scalable Analytics on Serverless Infrastructure},
+    booktitle = nsdi,
+    year = {2019},
+}
+@inproceedings{NSDI17:Encoding,
+    author = {Sadjad Fouladi and Riad S. Wahby and Brennan Shacklett and Karthikeyan Vasuki Balasubramaniam and William Zeng and Rahul Bhalerao and Anirudh Sivaraman and George Porter and Keith Winstein},
+    title = {Encoding, Fast and Slow: Low-Latency Video Processing Using Thousands of Tiny Threads},
+    booktitle = nsdi,
+    year = {2017},
+}
+@inproceedings{OSDI18:Pocket,
+    author = {Ana Klimovic and Yawen Wang and Patrick Stuedi and Animesh Trivedi and Jonas Pfefferle and Christos Kozyrakis},
+    title = {Pocket: Elastic Ephemeral Storage for Serverless Analytics},
+    booktitle = osdi,
+    year = {2018},
+}
+
+@inproceedings{SC20:Batch,
+  title={Batch: Machine learning Inference Serving on Serverless Platforms with Adaptive Batching},
+  author={Ali, Ahsan and Pinciroli, Riccardo and Yan, Feng and Smirni, Evgenia},
+  booktitle=sc,
+  year={2020},
+  doi={10.1109/SC41405.2020.00073}
+}
+
+@inproceedings{SoCC19:Cirrus,
+    author = {Carreira, Joao and Fonseca, Pedro and Tumanov, Alexey and Zhang, Andrew and Katz, Randy},
+    title = {Cirrus: A Serverless Framework for End-to-end ML Workflows},
+    year = {2019},
+    doi = {10.1145/3357223.3362711},
+    booktitle = socc,
+}
+
+@inproceedings{INFOCOM19:DistributedML,
+  author={Wang, Hao and Niu, Di and Li, Baochun},
+  booktitle=infocom, 
+  title={Distributed Machine Learning with a Serverless Architecture}, 
+  year={2019},
+  doi={10.1109/INFOCOM.2019.8737391}}
+  
+@misc{Doc:AzureWebApp,
+  author       = {Microsoft},
+  title        = {Serverless Web Application - Azure Architecture Center},
+  howpublished = {\url{https://learn.microsoft.com/en-us/azure/architecture/web-apps/serverless/architectures/web-app}},
+  note         = {Accessed: 2025-10-10},
+  year         = {2025}
+}
+
+@inproceedings{OSDI21:Dorylus,
+    author = {John Thorpe and Yifan Qiao and Jonathan Eyolfson and Shen Teng and Guanzhou Hu and Zhihao Jia and Jinliang Wei and Keval Vora and Ravi Netravali and Miryung Kim and Guoqing Harry Xu},
+    title = {Dorylus: Affordable, Scalable, and Accurate GNN Training with Distributed CPU Servers and Serverless Threads},
+    booktitle = osdi,
+    year = {2021},
+}
+
+@misc{Doc:AWS_Lambda_Mem,
+  author       = {Amazon Web Services},
+  title        = {Configure Lambda function memory},
+  howpublished = {\url{https://docs.aws.amazon.com/lambda/latest/dg/configuration-memory.html}},
+  note         = {Accessed: 2025-10-10},
+  year         = {2025}
+}
+
+@misc{Doc:Azure_Functions_Hosting,
+  author       = {Microsoft},
+  title        = {Azure Functions hosting options},
+  howpublished = {\url{https://learn.microsoft.com/en-us/azure/azure-functions/functions-scale}},
+  note         = {Accessed: 2025-10-10},
+  year         = {2025}
+}
+
+@misc{Doc:GCP_CloudRun_Mem,
+  author       = {Google},
+  title        = {Configure memory limits for services},
+  howpublished = {\url{https://cloud.google.com/run/docs/configuring/services/memory-limits}},
+  note         = {Accessed: 2025-10-10},
+  year         = {2025}
+}
+
+@inproceedings{ASPLOS24:RainbowCake,
+author = {Yu, Hanfei and Basu Roy, Rohan and Fontenot, Christian and Tiwari, Devesh and Li, Jian and Zhang, Hong and Wang, Hao and Park, Seung-Jong},
+title = {RainbowCake: Mitigating Cold-starts in Serverless with Layer-wise Container Caching and Sharing},
+year = {2024},
+doi = {10.1145/3617232.3624871},
+booktitle = asplos,
+}
+
+@inproceedings{ASPLOS22:IceBreaker,
+    author = {Roy, Rohan Basu and Patel, Tirthak and Tiwari, Devesh},
+    title = {IceBreaker: Warming Serverless Functions Better with Heterogeneity},
+    year = {2022},
+    doi = {10.1145/3503222.3507750},
+    booktitle = asplos
+}
+
+@inproceedings{ATC20:SitW,
+    author = {Mohammad Shahrad and Rodrigo Fonseca and Inigo Goiri and Gohar Chaudhry and Paul Batum and Jason Cooke and Eduardo Laureano and Colby Tresness and Mark Russinovich and Ricardo Bianchini},
+    title = {Serverless in the Wild: Characterizing and Optimizing the Serverless Workload at a Large Cloud Provider},
+    booktitle = atc,
+    year = {2020},
+}
+
+@inproceedings{SoCC22:Hermod,
+author = {Kaffes, Kostis and Yadwadkar, Neeraja J. and Kozyrakis, Christos},
+title = {Hermod: principled and practical scheduling for serverless functions},
+year = {2022},
+doi = {10.1145/3542929.3563468},
+booktitle = socc,
+}
+
+@misc{Doc:OpenWhisk,
+  author       = {The Apache Software Foundation},
+  title        = {Apache OpenWhisk},
+  howpublished = {\url{https://openwhisk.apache.org/}},
+  note         = {Accessed: 2025-10-10},
+  year         = {2025}
+}
+
+@misc{Doc:OpenFaaS,
+  author       = {OpenFaaS Ltd.},
+  title        = {OpenFaaS},
+  howpublished = {\url{http://openfaas.com/}},
+  note         = {Accessed: 2025-10-10},
+  year         = {2025}
+}
+
+@misc{Doc:Knative,
+  author       = {Knative},
+  title        = {Knative},
+  howpublished = {\url{https://knative.dev/}},
+  note         = {Accessed: 2025-10-10},
+  year         = {2025}
 }
