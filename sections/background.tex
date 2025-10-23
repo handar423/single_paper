@@ -1,28 +1,76 @@
 \section{Background and Motivation}
 \label{sec:background}
 
+\subsection{Existing resource management in Serverless}
+\label{sec:background:resource-management}
 
+% 1. serverless的资源管理模式: 静态资源分配管理
+% 把 resource allocation 分为两个步骤，一个是节点-level的资源分配，即运行时的核数和内存，另一个cluster-level的资源分配，即是函数容器副本扩缩容和放置，即决定副本数量、并将容器放置到具体的节点。
 
+\paraf{Static runtime resource allocation}
+% 1) 静态的运行时资源配置：介绍 lambda 支持指定固定资源规格，及其对延迟和开销的影响，所以选取一个所有请求都不违背qos的配置
 
-% 2.目前开源的容器管理平台已经支持了在不重启pod的情况下进行资源扩容，这为我们设计新的调度算法提供了可能？
+\parabf{Static-resource serverless sandbox autoscaling and placement.}
+% 2）根据静态资源配置进行容器扩缩容放置：现有的 serverless 系统大多基于静态资源配置进行容器放置调度
+% 仅容器启动、离开时比较资源：只需维护节点已分配资源和未分配资源总计，任务到来时可以分配到未分配资源>静态请求资源的节点上，更新已分配资源、未分配资源，函数容器销毁时释放资源、更新已分配资源、未分配资源即可
 
-\subsection{Resource management in Serverless}
+\parabf{Existing approaches for serverless static resource management.}
 
-% # serverless的资源管理模式
+% 3) 已有工作：
+%   a) 运行时资源配置：根据 profile 进行 static 资源分配，在延迟和开销间做合理tradeoff，引用一些相关工作，如 
 
-% # 函数资源占用的特点
+Furthermore, existing resource allocation strategies operate at the function level, where each function instance is allocated a static resource capacity~\cite{Doc:AWS_Lambda_Mem, Doc:Azure_Functions_Hosting, Doc:GCP_CloudRun_Mem, ASPLOS21:FaasCache} \todo{add a few more papers with static allocation}. This strategy is predicated on the assumption that a function exhibits uniform resource demands across all its invocations
 
-% # 现有调度方案的问题
+%   b) 函数容器副本扩缩容和放置
+% 第一段，函数容器副本数量：基于历史预测，引用文章
+% 第二段（或二、三段），函数容器副本放置缓存亲和性、多资源综合考虑调度：考虑（先几句话说缓存为啥重要）缓存是否存在、多资源性质（即预备资源分配），引用文章
+% 可以考虑，包含 FaasCache这种单机容器缓存管理， orion这种单函数缓存副本数控制、跨函数预热，jiagu这种多节点协同缓存管理，引用更多文章
 
+% 2. serverless 函数资源需求分析
 \subsection{Function Resource Demand Analysis}
-\label{sec:demand-analysis}
+\label{sec:background:demand-analysis}
 
-\subsection{Job scheduling in Serverless}
+% 1) 函数资源占用的特点
+\paraf{Dynamic resource usage across invocations.}
 
-% # 任务处理流程
+fig1 different resource usage pattern across different invocations of the same function
+
+
+% 2) 现有调度方案的问题
+\parabf{Drawback of existing solutions: Static resource allocation waste resources.}
+
+static resource allocation for the same function may lead to resource waste or performance degradation
+
+
+
+% 3) Opportunity: 函数动态运行时资源调整 
+% 现有容器框架支持动态运行时资源分配（具体机制或者接口），其好处
+
+
+% 3. 动态资源分配的挑战
+\subsection{Challenges in Dynamic Resource Allocation for Serverless Functions}
+\label{sec:background:challenges}
+
+% 1) 挑战1：资源分配+副本扩缩挑战：如何确定一个函数的容器的资源组合（比如1核1个、2核1个、3核1个），以便在高效利用资源的同时，满足函数的动态资源需求
+% appeal for workload-split based 资源组合分配
+
+% 2）挑战2：副本放置挑战：动态资源分配打破了原有的静态资源分配假设，容器的资源需求不再是固定的，不能仅在容器启动和销毁时考虑节点资源分配
+% strawman solution：直接evict其他同节点容器，但带来缓存损失，且可能放大（相对较大规格的容器扩容，可能一下需要evict多个小规格容器）
+% appeal for Minimal-Disruption Placement Scaling
+
+额外一段，简单说下 fig2 heterogeneous multi-resource requirements characteristics(cpu:memory ratio) across different functions
+
+% 3）挑战3：资源缩容本身有成本挑战：扩容成本低，但缩容成本高。对于请求量没那么大的函数有难度。
+%Second, dynamic resource adjustment mechanisms introduce non-negligible overhead.
+%Specifically, while increasing a container's resource capacity is a relatively fast operation, decreasing it is often much slower.
+%For example, reducing the memory capacity of a container requires reclaiming memory pages, which incurs substantial latency.
+%As resource adjustment occurs on the critical path of request execution, this latency directly increases the end-to-end request handling time.
+% add overhead detail
+对于请求量没那么大的函数
+strawman 1: 起很多副本，细致应对不同资源需求，但导致大量浪费
+strawman 2：只起少量副本，一会儿扩一会儿缩，但频繁调整带来高开销
+appeal for(opportunity): Vertical Scaling-Based Task Scheduling Algorithm，即按请求资源量从小到大reorder请求，使得单容器能从小到大单调递增扩容，然后只减少一次到很小，循环往复
 
 % # 本文优化目标（场景：高负载、高并发，核心目标：资源利用率和任务吞吐量）
 
-% # 现有策略的不足
-
-add demo experiment here, sota - overhead detail
+add demo experiment here, sota
