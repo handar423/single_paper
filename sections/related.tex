@@ -2,9 +2,76 @@
 \label{sec:related}
 
 \paraf{Serverless runtime resource configuration.}
+Optimizing per-instance resource allocation for serverless functions is a
+well-explored area of research. A prevalent method is profile-guided static
+tuning~\cite{wang2018peeking, shahrad2020serverless},
+involving benchmarking each function across various resource setups
+(e.g., memory sizes, cpu cores) to establish a latency-vs-cost curve. The least costly
+configuration that fulfills the service level objectives (SLOs) is chosen
+for deployment.
+Other works~\cite{pu2019shuffling, JinZXZHLJ23, zhang2024jolteon, ZhangTKCS21, ORION_MahgoubYSECB22,AQUATOPE_ZhouZD23}
+go further to optimize resource allocation for serverless workflows,
+by modeling the relationship between E2E latency and individual function resources.
+Cloud providers’ tools (e.g., AWS’s power tuning tool~\cite{aws_lambda_power_tuning})
+employ this technique to assist users in optimizing memory allocations.
+Unfortunately, all of them assume a static and uniform resource allocation per function,
+ignoring the significant per-invocation resource usage variations.
+Such static allocation can lead to over-provisioning for lightweight invocations,
+resulting in suboptimal utilization.
+By enabling dynamic resizing of serverless function resources, our work
+addresses this limitation, allowing for more efficient resource usage.
 
 
-\parabf{Serverless autoscaling and instance placement.}
+\parabf{Scheduling serverless function instances.}
+Recent research in serverless computing has delved into more effective management of function instances,
+encompassing cache policies, autoscaling, and placement strategies.
+The decision regarding how many function instances to keep alive typically hinges on workload predictions.
+Function instances may remain active for a designated time window after execution to manage subsequent invocations
+without incurring cold starts~\cite{ASPLOS21:FaaSCache} and can be prewarmed~\cite{ORION_MahgoubYSECB22}
+according to anticipated demand patterns to minimize startup latency.
+Moreover, the number of function instances can be dynamically adjusted based on real-time metrics and usage patterns~\cite{ORION_MahgoubYSECB22, aws_scaling_window, aws_scaling_eq, knative_scaling, AQUATOPE_ZhouZD23}.
+These techniques focus on optimizing the count of function instances with a static resource allocation.
+In contrast, our work is centered on determining a resource configuration portfolio,
+offering a set of diverse resource configurations for function invocations
+with varying resource usage patterns.
 
+Improved scheduling strategies optimize efficient placement of function instances
+by considering affinity and resource diversity.
+One approach is \emph{cache-aware placement}: by reusing sandbox state or memory
+pages from previous invocations, systems can reduce cold-start overhead.
+Techniques like SOCK~\cite{SOCK_OakesYZHHAA18} and others~\cite{li2022help}
+create new containers through copy-on-write cloning of a warm instance’s memory,
+enabling rapid and cost-effective startup.
+Another approach involves heterogeneous nodes and multi-resource awareness, where
+serverless frameworks match functions to optimal hardware or consolidate
+workloads to minimize fragmentation~\cite{RoyPT22, DuLJXZC22}.
+Lastly, data-affinity aware schedulers co-locate function instances to reduce
+data movement in serverless analytics and pipelines.
+Systems such as Wukong~\cite{Wukong_CarverZWAWC20}, ORION~\cite{ORION_MahgoubYSECB22}, Ditto~\cite{JinZXZHLJ23}
+assign workflow tasks to nodes where intermediate data is cached or nearby,
+reducing cross-node communication and improving end-to-end latency.
+Complementary efforts make prewarming cheaper by accelerating startup (e.g., Catalyzer
+\cite{Catalyzer_DuYXZYQWC20}) or reducing chaining/runtime overheads
+(Nightcore \cite{jia2021nightcore}, SAND \cite{sand_AkkusCRSSBAH18}) to improve elasticity.
+All these efforts focus on optimizing autoscaling and placement under the assumption
+of static resource allocation per function instance and may cause severe evictions
+when dynamic resizing of function instances is enabled.
+Our work mitigates eviction during function resizing by leveraging a minimal-disruption
+placement strategy to reduce the likelihood of eviction during scaling,
+thus improving overall performance and resource efficiency.
 
-\parabf{Serverless request scheduling and dispatching.}
+\parabf{Serverless Invocation Scheduling.}
+Effectively scheduling function invocations to suitable instances
+is a critical challenge in serverless platforms.
+To minimize invocation overheads and queuing delays,
+research in scheduling for serverless invocations continues to be active.
+Techniques like Nightcore \cite{jia2021nightcore} and Xfaas \cite{sahraei2023xfaas}
+offer low-overhead scheduling for serverless functions.
+Additionally, approaches such as Hermod~\cite{SoCC22:Hermod} and Xfaas
+improve load balancing of serverless functions across multiple instances
+through hybrid, load-, locality, and congestion-aware cross-region dispatchers.
+Xfaas also defers the execution of delay-tolerant functions to off-peak hours.
+Our research complements these strategies by managing invocation scheduling orders
+to mitigate serverless function instance scale-down costs.
+We advocate for executing function invocations in ascending order of resource requirements,
+thereby reducing downsizing overheads for serverless instances and enhancing overall system efficiency.
