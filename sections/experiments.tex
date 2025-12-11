@@ -1,36 +1,463 @@
 \section{Evaluation}
 \label{sec:experiments}
 
+In this section, we first evaluate the overall performance of \sysname against 
+state-of-the-art systems—Palette~\cite{abdi2023palette} and 
+FaaSCache~\cite{ASPLOS21:FaaSCache}—in \S\ref{sec:experiments_comparsion}. Next, 
+we investigate the scalability of \sysname in large-scale cluster environments 
+in \S\ref{sec:experiments_micro}. Finally, we conduct an in-depth analysis of 
+the effectiveness of the key techniques employed in \sysname in \S\ref{sec:experiments_technique}.
+
 \subsection{Evaluation Setup}
 \label{sec:experiments_setup}
 
-\parabf{Benchmarks.} 
+\parabf{Benchmarks.}
+We selected ten benchmark applications from a recent open-source serverless 
+benchmarking suite~\cite{copik2021sebs} to evaluate the performance of \sysname 
+across diverse workloads. Table\ref{tab:setup} summarizes the basic distribution 
+of these benchmarks (see~\cite{xxx} for full details). The selected benchmarks 
+span multiple categories—including Web Apps, Multimedia, Utilities, Inference, 
+and Scientific Computing—and exhibit substantial variation in resource requirements. 
+In our testdeb, the average memory consumption of these benchmarks ranges from 
+500 MB to 4 GB, while CPU usage varies between 0.5 and 4 cores. The memory-to-CPU 
+ratio (GB per core) also differs significantly, spanning from 0.5 to 4. Moreover, 
+the average execution times range from 0.15 to 21.5 seconds for these applications. 
+This diversity in workload characteristics enables a comprehensive performance 
+evaluation of \sysname under realistic conditions.
 
-\parabf{Workload generation.} 
+\begin{table}[ht]
+    \vspace{-10pt}
+    \caption{Performance comparison under multiple workflows.\label{tab:setup}}
+    % \fontsize{20pt}{30pt}\selectfont
+    \begin{tabularx}{0.47\textwidth}{ 
+        >{\raggedright\arraybackslash}X  % 1. 第一列左对齐
+        >{\centering\arraybackslash}X    % 2. 其他列居中...
+        >{\centering\arraybackslash}p{5cm}} % 3. 第四列指定为更宽的2cm，并居中
+        \toprule
+        \textbf{Benchmark} & \textbf{Type} & \textbf{Distribution} \\
+        \hline 
+        \hline 
+        \raisebox{-5pt}{graph-bfs} & \raisebox{-5pt}{Scientific} & Breadth-first search traversal implemented using igraph. \\
+        \hline
+        graph-mst & \raisebox{-5pt}{Scientific} & Computing minimum spanning tree using igraph. \\
+        \hline
+        graph-pagerank & \raisebox{-5pt}{Scientific} & \raisebox{-5pt}{PageRank algorithm execution with igraph.} \\
+        \hline
+        dna-visualisation & \raisebox{-5pt}{Scientific} & Generating visualization data from DNA sequences. \\
+        \hline
+        dynamic-html & \raisebox{-5pt}{Webapps} & Rendering dynamic HTML content from a template. \\
+        \hline
+        \raisebox{-5pt}{uploader} & \raisebox{-5pt}{Webapps} & Uploading files from a given URL to cloud storage. \\
+        \hline
+        \raisebox{-5pt}{compression} & \raisebox{-5pt}{Utilities} & Compressing multiple files into a ZIP archive for download. \\
+        \hline
+        image-recognition & \raisebox{-5pt}{Inference} & Performing image classification using ResNet and PyTorch. \\
+        \hline
+        thumbnailer & Multimedia & Creating thumbnail images from input pictures. \\
+        \hline
+        video-processing & \raisebox{-5pt}{Multimedia} & Adding watermarks and generates GIFs from video files. \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
 
-\parabf{Cluster configuration.} 
+\parabf{Workload generation.} We generate simulated user traffic based on the 
+Azure Functions Dataset~\cite{ShahradFGCBCLTR20}. For each benchmark, a 
+corresponding function invocation trace is randomly sampled from the top 20\% 
+most frequently invoked functions—a subset reported to account for the majority 
+of resource consumption in production environments~\cite{ShahradFGCBCLTR20}, 
+thus representing the critical bottleneck for cluster performance optimization. 
+The request rate of each trace is proportionally scaled so that the aggregated 
+resource demand approaches the total capacity of the cluster, while the invocation 
+frequencies across the ten benchmarks are adjusted to be nearly identical (with a 
+relative difference of less than 2\%). Since the original trace data is recorded 
+at minute-level granularity, we model intra-minute request arrivals using a 
+Poisson process. In alignment with common industrial practice~\cite{aws_scaling_window, 
+knative_scaling_window}, the scaling interval is set to 1 minute.
 
-\parabf{Baseline.}
+To simulate the real-world characteristic where the resource demand of a serverless 
+function follows a normal distribution across multiple executions, we first 
+randomly select ten functions from the dataset and compute the variance of their 
+resource usage after Gaussian fitting. We then randomly adjust the input data 
+size and parameters of each benchmark so that the actual resource requirements 
+align with the sampled variance. Given that the dataset only reflects the distribution 
+of memory resource demands, we assume a fixed ratio between CPU and memory requirements 
+for each benchmark. Accordingly, CPU allocation is determined proportionally 
+based on the memory~demand.
+
+\parabf{Cluster configuration.} Our experiments are conducted on CloudLab using 
+a cluster consisting of 9 c6620 instances (56 cores, 2 * Intel Xeon Gold 5512U 
+@ 2.1GHz, 128GB memory). Eight of them serve as working servers and one as the 
+scheduler and user request generator. To simulate the varied resource availability 
+conditions in production clusters, our evaluation allocates only a subset of total 
+resources on each worker server. Unless otherwise specified, the available resource 
+proportions across different servers are sampled from a normal distribution with 
+a standard deviation of 0.85.
+
+\parabf{Baseline.} We evaluate \sysname against two state-of-the-art resource 
+management approaches for serverless platforms: Palette~\cite{abdi2023palette} 
+and FaaSCache~\cite{ASPLOS21:FaaSCache}, which optimize cluster efficiency from 
+complementary perspectives. \textbf{Palette} enhances spatial locality by allowing 
+users to assign color labels to functions and co-locating those with the same color 
+on the same server. In our experiments, each benchmark is assigned a unique color. 
+Inspired by caching systems, \textbf{FaaSCache} employs a Greedy-Dual keep-alive 
+strategy that assigns a priority to each kept-alive instance and evicts low-priority 
+instances first under resource pressure. To ensure a fair comparison and minimize 
+the impact of engineering artifacts, we reimplement both baselines in our prototype 
+environment. Furthermore, to better reflect real-world production settings while 
+maintaining controlled conditions, we enable Kubernetes vertical pod autoscaling 
+(VPA) across all systems during evaluation (see prototype implementation details 
+in Section~\ref{sec:implementation}).
+
+\parabf{Metric.} We evaluate system performance using memory utilization, CPU 
+usage, and task throughput as primary metrics. To verify that the scheduling 
+algorithm in \sysname does not lead to task starvation, we also compare the 95th 
+percentile tail latency of task processing. Each data point is collected from 
+one-hour-long test runs, with the performance data from the first five minutes 
+excluded to eliminate the impact of initial cold starts.
 
 \subsection{Benefits of \sysname}
 \label{sec:experiments_comparsion}
 
+\begin{figure*}[ht]
+    \centering
+    \subfloat[]{\includegraphics[width=0.32\linewidth]{figures/Eval/distribution_CPU Utilization.pdf}%
+    \label{fig:eval_dis_cpu}}
+    \hfil
+    \subfloat[]{\includegraphics[width=0.32\linewidth]{figures/Eval/16worker_distribution_Memory Utilization.pdf}%
+    \label{fig:eval_dis_memory}}
+    \hfil
+    \subfloat[]{\includegraphics[width=0.32\linewidth]{figures/Eval/distribution_Task throughput.pdf}%
+    \label{fig:eval_dis_throughput}}
+    \caption{Performance comparison under different cluster resource distribution. (a) CPU Utilization. (b) Memory Utilization. (c) Task throughput.}
+    \vspace{-15pt}
+\label{fig:eval_dis}
+\end{figure*}
+
+To better demonstrate the performance of \sysname under different deployment 
+scenarios, we first compare the overall performance among \sysname and baselines 
+under different cluster resource distribution, benchmark number and workload distributions.
+
+\parabf{Comparison under different cluster resource distribution.} Figure~\ref{fig:eval_dis} 
+compares the performance of \sysname and baselines under different cluster resource 
+distribution. We introduce two resource availability patterns: uniform 
+and Zipf distributions. Under the uniform distribution, each server is configured 
+with 75\% of its total resources available. In the Zipf-based distribution, the 
+fraction of available resources per server follows a Zipf distribution parameterized 
+with $\alpha = 0.8$ across $n = 8$ resource tiers. 
+
+Across all resource distribution patterns, \sysname consistently improves both 
+CPU and memory utilization, achieving relative improvements of 43.61\%$\sim$55.53\% 
+and 41.41\%$\sim$67.01\% over the baselines, respectively. Furthermore, \sysname 
+demonstrates performance gains in task throughput, with improvements ranging from 
+51.52\% to 103.71\%.
+
+To address the potential concern of task starvation, we examine the impact on 
+request-level performance. As shown in Table~\ref{tab:latency}, \sysname reduces 
+the overall 95th percentile latency by 30.63\%$\sim$42.42\% compared to the baselines. 
+This result indicates that the efficiency gains of \sysname are not achieved by 
+systematically delaying particular requests or task types. Instead, the improvement 
+in resource utilization and throughput is achieved alongside enhanced and more 
+predictable end-to-end performance, even when co-locating diverse benchmarks with 
+varying resource demands and execution characteristics.
+
+The performance gains of \sysname are primarily attributed to two mechanisms. 
+First, the workload-splitting-based instance placement strategy enables individual 
+servers to serve fewer functions, thereby increasing instance reuse probability. 
+This approach also aligns server workload with resource capacity, avoiding resource 
+waste caused by load-resource mismatch. Second, the vertical-scaling-based task 
+scheduling policy reduces both resource over-provisioning and cold-start frequency, 
+further boosting overall resource utilization.
+
+\begin{table}[ht]
+    \vspace{-10pt}
+    \caption{Performance comparison under multiple workflows.\label{tab:latency}}
+    \begin{tabularx}{0.47\textwidth}{ 
+        >{\raggedright\arraybackslash}X 
+        >{\centering\arraybackslash}X
+        >{\centering\arraybackslash}X
+        >{\centering\arraybackslash}X }
+        \toprule
+        \multirow{2}{*}{\makecell[l]{\textbf{Resource} \\ \textbf{Distribution}}} & \multicolumn{3}{c}{\textbf{95th Tail Latency (s)}} \\ \cline{2-4}
+         & \raisebox{-1pt}{\textbf{Palette}} & \raisebox{-1pt}{\textbf{FaaSCache}} & \raisebox{-1pt}{\textbf{\sysname}} \\
+        \hline 
+        Norm-85 & 1071 & 1104 & \textbf{743} \\
+        Uniform-75\%& 1054 & 1063 & \textbf{729} \\
+        Zipf-80 & 1372 & 1335 & \textbf{790} \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+\begin{figure*}[ht]
+    \centering
+    \subfloat[]{\includegraphics[width=0.32\linewidth]{figures/Eval/func_number_CPU Utilization.pdf}%
+    \label{fig:eval_function_cpu}}
+    \hfil
+    \subfloat[]{\includegraphics[width=0.32\linewidth]{figures/Eval/func_number_Memory Utilization.pdf}%
+    \label{fig:eval_function_memory}}
+    \hfil
+    \subfloat[]{\includegraphics[width=0.32\linewidth]{figures/Eval/func_number_Task throughput.pdf}%
+    \label{fig:eval_function_throughput}}
+    \caption{Performance comparison under different function numbers. (a) CPU Utilization. (b) Memory Utilization. (c) Task throughput.}
+    \vspace{-15pt}
+\label{fig:eval_function}
+\end{figure*}
+
 \parabf{Comparison under different benchmark number.}
+Next, we evaluate \sysname and the baselines under different workload scales. 
+Beyond the default configuration of 10 benchmarks, we provide two additional scenarios:
 
-\parabf{Comparison under different resource distributions.} 
+\begin{itemize}
+    \item \textbf{5 benchmarks}: A randomly selected subset comprising \textbf{video-processing}, 
+    \textbf{graph-pagerank}, \textbf{image-recognition}, \textbf{dna-visualization}, 
+    and \textbf{thumbnailer}. To maintain the comparable total load, the 
+    invocation rate for each function in this set is doubled;
 
-\parabf{Performance analysis.} 
+    \item \textbf{20 benchmarks}: The original 10 benchmarks plus their replicas. Each 
+    replica has the same code, resource profile, and runtime as the original but 
+    is considered a distinct function, preventing instance reuse between the 
+    original-replica pairs. The invocation rate per function is halved to 
+    maintain the aggregate request rate.
+\end{itemize}
 
-\subsection{Scalability}
-\label{sec:experiments_overhead}
+As shown in Figure~\ref{fig:eval_function}, the performance advantage of \sysname 
+over the baselines grows as the number of benchmarks increases from 5 to 20. 
+Specifically, the improvement in CPU utilization rises from 17.40\%$\sim$16.90\% 
+to 44.89\%$\sim$44.06\%, memory utilization gains increase from 41.81\%$\sim$43.26\% 
+to 55.42\%$\sim$57.37\%, and task throughput improvements expand from 45.22\%$\sim$51.06\% 
+to 75.45\%$\sim$78.98\%.
 
-\parabf{Larger-scale cluster experiment.}
+This scaling trend can be attributed to the workload-splitting strategy. With 
+fewer benchmarks, each server already operates on a limited set of functions, 
+leaving limited room for further optimization through instance reuse. In contrast, 
+when the workload is larger and more diverse, the strategy reduces the number of 
+distinct functions each server handles. This effect elevates the instance reuse 
+rate, which in turn improves overall~efficiency.
 
-\parabf{System overhead.}
+\begin{figure*}[ht]
+    \centering
+    \subfloat[]{\includegraphics[width=0.32\linewidth]{figures/Eval/skew_CPU Utilization.pdf}%
+    \label{fig:eval_workload_cpu}}
+    \hfil
+    \subfloat[]{\includegraphics[width=0.32\linewidth]{figures/Eval/skew_Memory Utilization.pdf}%
+    \label{fig:eval_workload_memory}}
+    \hfil
+    \subfloat[]{\includegraphics[width=0.32\linewidth]{figures/Eval/skew_Task throughput.pdf}%
+    \label{fig:eval_workload_throughput}}
+    \caption{Performance comparison under different workload distributions. (a) CPU Utilization. (b) Memory Utilization. (c) Task throughput.}
+    \vspace{-15pt}
+\label{fig:eval_workload}
+\end{figure*}
+
+\parabf{Comparison under different workload distributions.} 
+Finally, we examine the impact of workload distribution on scheduling performance. 
+In addition to the default resource distribution (see~\ref{sec:experiments_setup}), 
+we introduce a Zipf-based load pattern. Specifically, we adjust the $\alpha$ parameter 
+of a Zipf distribution (with n = 10) to obtain a probability set that approximates 
+the Pareto principle (\emph{i.e.}, the 80/20 rule), where the sum of the two largest 
+probabilities is about 0.8. We then scale the request rate of each benchmark 
+according to this distribution, preserving the total aggregate invocation frequency 
+while ensuring that the two most frequently invoked functions—randomly chosen as 
+\textbf{thumbnailer} and \textbf{video-processing}—collectively account for 80\% 
+of all invocations.
+
+It can be observed from Figure~\ref{fig:eval_workload} that, compared to the default 
+uniform distribution, the optimization margin of \sysname under the Zipf workload 
+distribution is relatively smaller. Under the Zipf distribution, \sysname achieves 
+an increase in CPU utilization of 23.20\%$\sim$23.58\%, memory utilization of 
+27.04\%$\sim$28.50\%, and task throughput of 29.20\%$\sim$31.34\% over the baselines.
+
+\looseness=-1
+This result stems from our experimental configuration: the Zipf distribution 
+adhering to the 80/20 rule implies that only two functions bear the majority of 
+the workload, which naturally grants them more instance reuse opportunities. In 
+contrast, while the real-world workload distribution also exhibits skew, it 
+involves a larger number of high-load functions competing for server resources 
+simultaneously. This competition creates more optimization potential for the 
+\sysname strategy. Moreover, even with only two high-load functions, \sysname 
+still achieves around 20\%$\sim$30\% higher resource utilization and task throughput 
+than the baselines. This gain is primarily because the vertical-scaling-based 
+task scheduling policy reduces both instance resource over-provisioning and 
+cold-start frequency through task reordering, thereby enhancing overall 
+resource~efficiency.
+
+\begin{figure}[t]
+    \centering
+    \subfloat[]{\includegraphics[width=0.9\linewidth]{figures/Eval/detail_cpu.pdf}%
+    \label{fig:eval_detail_cpu}}
+    \hfil
+    \subfloat[]{\includegraphics[width=0.9\linewidth]{figures/Eval/detail_memory.pdf}%
+    \label{fig:eval_detail_memory}}
+    \caption{Detail Resource Comsupmtion of \sysname and baselines. (a) CPU Detail Comsupmtion. (b) Memory Detail Comsupmtion.}
+    \vspace{-15pt}
+\label{fig:eval_detail}
+\end{figure}
+
+\parabf{Performance analysis.} To further demonstrate the reasons for \sysname 
+performance advantage, Figure~\ref{fig:eval_detail} provides a detailed 
+illustration of the average resource consumption of \sysname and the baselines 
+during task processing. We categorize CPU and memory resources into the following 
+four types: 
+
+\begin{itemize}
+    \item \textbf{Task Execution}: resources allocated for processing tasks;
+    \item \textbf{Cold Start}: resources consumed during the initialization of instances;
+    \item \textbf{Standby Instance}: resources held by ready but currently idle instances;
+    \item \textbf{Idle Resource}: available but unallocated resources.
+\end{itemize}
+
+Taking CPU utilization as an example, compared to the baselines, \sysname increases 
+the resource share for Task Execution by 45.47\%$\sim$43.61\%, for Standby Instance 
+by 110.87\%$\sim$125.58\%, and for Idle Resource by 43.59\%$\sim$47.37\%, while 
+it reduces the share for Cold Start by 83.65\%$\sim$83.56\%. A similar trend is 
+observed for memory utilization.
+
+The resource utilization advantage of \sysname stems from the reduction in cold 
+starts. This is achieved through two strategies. First, the workload-splitting-based 
+instance placement concentrates a narrower set of functions on each server, which 
+increases instance reuse opportunities. Second, the vertical-scaling-based task 
+scheduling policy reorders tasks and dynamically adjusts instance resources, 
+enabling instances to serve varying demands throughout their lifecycle without 
+repeated cold starts or static over-provisioning.
+
+The resources conserved from fewer cold starts are reallocated in two ways: they 
+increase the share for task execution while expanding the pool of standby instances. 
+Consequently, a larger ready-to-use instance pool is maintained, raising the 
+probability of warm starts.
 
 \subsection{Effectiveness of \sysname}
 \label{sec:experiments_technique}
 
-\parabf{Technique effectiveness.}
+{
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=0.97\linewidth]{figures/Eval/workflow_xiaorong.pdf}
+    \caption{Performance comparison between \sysname and simplified versions.}
+    \label{fig:technique}
+    \vspace{-10pt}
+\end{figure}
+}
 
-\parabf{Parameter effectiveness.}
+In this section, we investigate the impact of the techniques employed by 
+\sysname. We measure \sysname with the following two simplified versions:
+\begin{itemize}
+    \item \textbf{Placement*}: This variant uses only the workload-splitting-based 
+    instance placement strategy, while tasks within each server are scheduled using 
+    a simple FIFO policy.
+    \item \textbf{Scheduling*}: This variant uses only the vertical-scaling-based 
+    task scheduling policy within each server, while user requests are randomly 
+    assigned across servers.
+\end{itemize}
+
+Figure~\ref{fig:technique} shows the performance comparison between \sysname and 
+simplified versions. We also provide the evaluation results of the baselines for 
+reference.
+
+As shown, the performance of the Placement* version lies between the baselines 
+and \sysname. Compared to the baselines, it achieves improvements of 20.07\%$\sim$21.63\%, 
+16.90\%$\sim$17.23\%, and 17.31\%$\sim$15.74\% in CPU utilization, memory utilization, 
+and task throughput, respectively. However, it still falls short of \sysname by 
+16.39\%, 17.33\%, and 23.62\% in the metrics. These results demonstrate that the 
+workload-splitting-based instance placement strategy alone can effectively enhance 
+scheduling performance through load partitioning. Furthermore, it requires integration 
+with the vertical-scaling-based task scheduling policy for fine-grained, 
+server-internal resource management to achieve optimal performance.
+
+The performance of the Scheduling* variant reveals a more nuanced trade-off. It 
+underperforms \sysname in resource utilization, with CPU and memory utilization 
+lower by 13.35\% and 29.99\%, respectively. Despite this, it achieves a 27.95\% 
+higher task throughput. This discrepancy occurs because Scheduling* prioritizes 
+tasks with lower resource demands, shorter execution times, and higher invocation 
+frequencies, without explicitly optimizing for overall server utilization.
+
+When integrated with the workload-splitting-based instance placement strategy 
+(as in \sysname), each server handles a limited, resource-complementary set of 
+functions. This increases the likelihood that tasks with high resource demands 
+are selected for instance setup and execution, raising the execution priority for 
+subsequent tasks from the same function (see Section~\ref{sec:scheduling}). In 
+contrast, without effective load partitioning, a wider variety of instances compete 
+for server resources. In this scenario, resource-intensive instances are served 
+mainly through starvation-avoidance mechanisms, receiving only limited execution 
+opportunities. The resulting contention leads to frequent instance eviction and 
+cold starts, which hinders effective improvement in resource utilization.
+
+\subsection{Scalability}
+\label{sec:experiments_overhead}
+
+Finally, we evaluate the scalability of \sysname. Due to testbed limitations, 
+this section includes both real and simulated experiments. We first demonstrate 
+the performance of \sysname on a larger-scale cluster. Then we
+show the system overhead of the \sysname scheduler on up to 1024 nodes.
+
+\begin{figure*}[ht]
+    \centering
+    \subfloat[]{\includegraphics[width=0.32\linewidth]{figures/Eval/16worker_distribution_CPU Utilization.pdf}
+    \label{fig:eval_big_cpu}}
+    \hfil
+    \subfloat[]{\includegraphics[width=0.32\linewidth]{figures/Eval/16worker_distribution_Memory Utilization.pdf}
+    \label{fig:eval_big_memory}}
+    \hfil
+    \subfloat[]{\includegraphics[width=0.32\linewidth]{figures/Eval/16worker_distribution_Task throughput.pdf}
+    \label{fig:eval_big_throughput}}
+    \caption{Performance comparison in 16-worker cluster. (a) CPU Utilization. (b) Memory Utilization. (c) Task throughput.}
+    \vspace{-15pt}
+\label{fig:eval_big}
+\end{figure*}
+
+\parabf{Larger-scale cluster experiment.}
+In the larger-scale cluster experiment, we increased the number of worker nodes 
+to 16 and proportionally scaled the request invocation frequency, while keeping 
+other conditions constant. Figure~\ref{fig:eval_big} shows the performance comparison 
+among \sysname and the baselines. Compared to the baselines, \sysname improves 
+CPU utilization by 31.80\%$\sim$61.75\%, memory utilization by 41.95\%$\sim$53.82\%, 
+and task throughput by 40.24\%--110.75\%. These results align with those observed 
+in the smaller cluster, demonstrating that \sysname maintains its performance 
+advantage stably at scale.
+
+{
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=0.97\linewidth]{figures/Eval/overhead_placement.pdf}
+    \caption{The average latency of \sysname in handling scaling request.}
+    \label{fig:overhead_placement}
+    \vspace{-10pt}
+\end{figure}
+}
+
+{
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=0.97\linewidth]{figures/Eval/overhead_scheduling.pdf}
+    \caption{The average latency of \sysname in handling scaling request.}
+    \label{fig:overhead_scheduling}
+    \vspace{-10pt}
+\end{figure}
+}
+
+\parabf{System overhead.}
+We next evaluate the overhead of the \sysname scheduler under varying cluster 
+sizes and request frequencies. To do so, we simulate scheduler load for clusters 
+ranging from 64 to 1024 worker servers. To avoid interference from bursty traffic 
+patterns, we generate invocations at a steady rate instead of using the trace 
+from the Azure Functions Dataset~\cite{ShahradFGCBCLTR20}. The experimental results 
+are presented in Figures~\ref{fig:overhead_placement} and~\ref{fig:overhead_scheduling}. 
+
+Figure~\ref{fig:overhead_placement} shows the average latency for generating cluster-wide 
+instance placement strategies under different cluster sizes. It can be observed 
+that the placement-generation overhead increases gradually with cluster scale but 
+remains largely unaffected by request frequency. This is because \sysname scales 
+the overall load proportionally to the cluster size before computing the placement 
+strategy. Even with 1024 worker nodes and an invocation rate of $250 \times 10^3$ 
+requests per minute, the latency stays below 110 ms. This result indicates that 
+the scheduler can generate placement strategies promptly, even in large-scale 
+clusters, demonstrating the practical scalability of \sysname.
+
+Figure~\ref{fig:overhead_scheduling} shows the scheduling latency for individual 
+task assignments under different invocation frequencies. It should be noted that 
+placement strategy generation is performed by a separate background process within 
+the scheduler. The main scheduling process only receives the resulting placement 
+plan and assigns tasks accordingly. Therefore, only the task assignment overhead 
+contributes to the additional latency introduced by \sysname in the end-to-end 
+task execution path. As shown, even under a heavy load of 1024 worker nodes, the 
+extra scheduling delay added by \sysname remains below 10 ms. This overhead is 
+negligible for the vast majority of FaaS scenarios, confirming that the scheduling 
+logic of \sysname is lightweight enough for production-scale deployment.

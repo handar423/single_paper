@@ -3,12 +3,55 @@
 \section{\sysname Overview}
 \label{sec:overview}
 
+{
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{figures/overview.pdf}
+  \vspace{-10pt}
+  \caption{\sysname overview.}
+  \vspace{-14pt}
+  \label{fig:overview}
+\end{figure}
+}
 
+Figure~\ref{fig:overview} illustrates the overall architecture of \sysname. The
+scheduling framework of \sysname operates at two levels: cluster-wide task 
+dispatching and per-server scheduling. At the cluster level, incoming user requests 
+are first directed to a task dispatcher, which performs initial traffic accounting. 
+The workload-splitting manager continuously collects traffic statistics, function 
+metadata, and task performance metrics, periodically executing the instance 
+placement algorithm. The resulting placement plan is fed back to the task dispatcher 
+to guide request-to-server assignments. Tasks assigned to worker nodes are placed 
+into task queues managed by the worker scheduler, which maintains separate queues 
+and priorities for different functions and orchestrates instances within the 
+node—executing tasks and performing vertical resource scaling. We introduce two key 
+techniques in \sysname: workload-splitting-based instance placement, and 
+vertical-scaling-based task scheduling.
 
-\parabf{Instance placement based on heuristic algorithm}
+\parabf{Workload-Splitting-based Instance Placement.} \sysname controls instance 
+placement by establishing a mapping between functions (or, more precisely, subsets 
+of requests from the same function that share a given resource-demand range) and 
+specific worker servers. This mapping dictates how tasks are assigned across the 
+cluster. Based on a heuristic algorithm, \sysname ensures that the collective 
+resource demand of the function mix served by each worker node aligns with the 
+server resource capacity, thereby maximizing resource utilization. Simultaneously, 
+\sysname minimizes the number of distinct functions served by each node to increase 
+instance reuse. For functions with high resource demands that require deployment 
+across multiple servers, \sysname employs task-level load splitting to distribute 
+their workload. By controlling the optimization step size of the heuristic 
+algorithm, \sysname guarantees algorithm convergence and keeps the computation 
+duration below a hundred milliseconds.
 
-% insight -> 资源切分方案
-
-
-% -> server内如何解决函数burst问题
-\parabf{job scheduling based on dynamic instance resizing}
+\parabf{Vertical-Scaling-based Task Scheduling}
+\sysname designs the worker-level scheduling algorithm around the restart-free 
+vertical pod scaling feature of Kubernetes. The scheduler maintains dual task 
+queues, both of which are sorted in ascending order of resource demand. This 
+ordering ensures that, within an appropriate time window, the resource requirements 
+of tasks processed by given instances increase monotonically. Consequently, a pod 
+can be vertically scaled up incrementally to meet the growing demands of successive 
+tasks without over-provisioning, thereby increasing resource utilization without 
+incurring restarts. To prevent task starvation, \sysname holistically considers 
+task waiting time, cold-start overhead, and resource requirements in designing task 
+queue priorities. By strategically reordering tasks to extend queue lengths under 
+priority constraints, \sysname effectively increases resource utilization and 
+reduces the frequency of cold starts.

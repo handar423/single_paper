@@ -92,6 +92,7 @@ To mitigate long-term resource fragmentation and adapt to major shifts in worklo
 This global reset ensures that the cluster maintains high resource utilization and adapts effectively to evolving workloads.
 
 \subsection{Vertical-Scaling-based Task Scheduling}
+\label{sec:scheduling}
 
 While the instance placement strategy operates at the cluster level, the task scheduler operates at the intra-server level, managing how requests are executed by the instances hosted on a single server.
 The core principle of our task scheduler is to provision precisely the amount of memory required by each individual request, a technique we refer to as per-request vertical scaling.
