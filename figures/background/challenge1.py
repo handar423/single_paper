@@ -97,6 +97,6 @@ ax.set_title("Invocation CPU histogram with portfolio splits")
 
 plt.tight_layout()
 
-out_path = os.path.join(out_dir, "challenge1_mix.png")
+out_path = os.path.join(out_dir, "challenge1_mix.pdf")
 plt.savefig(out_path, dpi=160)
 print(f"Saved {out_path}")

@@ -32,8 +32,8 @@ developer specifies a memory size (e.g., 128 MB–10,240 MB), from which the
 platform derives proportional vCPU and network bandwidth shares. Developers may
 also set ephemeral storage per instance (default 512 MB, configurable up to
 several GB). These limits remain fixed throughout the sandbox's lifetime.
-Similar static per-instance specifications are used by Azure Functions and
-Google Cloud Run~\cite{Doc:Azure_Functions_Hosting, Doc:GCP_CloudRun_Mem}. This
+Similar static per-instance specifications are used by Azure Functions~\cite{Doc:Azure_Functions_Hosting} and
+Google Cloud Run~\cite{Doc:GCP_CloudRun_Mem}. This
 approach presumes uniform resource demand across function invocations.
 Operators typically select the smallest configuration that satisfies the
 function's QoS (e.g., latency SLO) to minimize costs.
@@ -94,20 +94,21 @@ have been proposed for serverless workflows to reduce data transfer overheads be
 \paraf{Resource Usage Variation Across Invocations.}
 Invocations of the same serverless function can show significant differences in
 resource consumption. For instance, analyzing CPU usage at the invocation level
-for a representative function produces a wide empirical distribution, as shown in
+for a representative function produces a wide empirical distribution, as shown in the probability density histogram in 
 Figure~\ref{fig:usage_variation}(a). This suggests that inputs, execution paths, and
 runtime conditions greatly affect demand. To quantify this within-function variability,
 we calculate the standard deviation of invocation-level resource usage for each function
 as a measure of variability. Analyzing many functions, Figure~\ref{fig:usage_variation}(b)
-displays the distribution of these per-function standard deviations; the notable presence
+displays the distribution (as a density plot) of these per-function standard deviations; the notable presence
 of high values indicates that substantial invocation-to-invocation variability is typical.
-Similar patterns are observed for memory usage.
+Similar patterns are observed for memory~usage.
 
 \begin{figure}[t]
-  \centering
-  \includegraphics[width=1.0\linewidth]{figures/background/usage_variation.png}
-  \caption{Resource usage variations of serverless function.}
-  \label{fig:usage_variation}
+    \centering
+    \includegraphics[width=0.95\linewidth]{figures/background/cdf_cpu_cv_regions.pdf}
+    \caption{Resource usage variations of serverless function.}
+    \vspace{-15pt}
+\label{fig:usage_variation}
 \end{figure}
 
 % 2) 现有调度方案的问题
@@ -123,9 +124,9 @@ Fixed sizing also worsens data locality and resource fragmentation.
 \parabf{Opportunity: Dynamic in‑place runtime resource adjustment}
 Dynamically aligning each invocation's resource needs with its sandbox allocation
 absorbs bursts and handles intra-function heterogeneity, improving utilization and
-reducing overprovisioning and SLO risks. Kubernetes supports in‑place vertical scaling
-via Pod resize subresource, updating container {requests,limits} without recreation,
-including both memory and CPU allocation adjustments. Memory scaling is achieved by modifying cgroup limits,
+reducing overprovisioning and SLO risks. Kubernetes enables in‑place vertical 
+scaling without pod recreation via the Pod resize subresource, allowing live updates 
+to both CPU and memory resource requests and limits. Memory scaling is achieved by modifying cgroup limits,
 which dynamically changes the memory allocation for a running container without stopping it.
 Similarly, CPU resources can be adjusted by altering cgroup CPU shares and quotas, allowing the kubelet
 to allocate CPU cycles according to usage metrics and policy constraints \cite{Doc:K8s_Pod_Resize, Doc:K8s_CRI_Update}.
@@ -138,28 +139,7 @@ both CPU and memory, optimizing resources while preserving state and improving c
 \subsection{Challenges in Dynamic Resource Allocation for Serverless Functions}
 \label{sec:background:challenges}
 
-% 1) 挑战1：资源分配+副本扩缩挑战：如何确定一个函数的容器的资源组合（比如1核1个、2核1个、3核1个），以便在高效利用资源的同时，满足函数的动态资源需求
-% appeal for workload-split based 资源组合分配
-
-\paraf{Challenge 1: Function Resource Configuration Portfolio.}
-When configuring dynamic and non-uniform resource configurations for serverless
-containers, it is essential to fit known workload patterns with an appropriate
-portfolio of instance sizes. Improper sizing can lead to inefficiencies such as
-resource overprovisioning, inflated costs, and potential violations of service
-level objectives (SLOs). This appeals for a workload-splitting formulation that
-divides the function's resource-usage distribution into distinct regions, as
-illustrated by the histogram in Figure~\ref{fig:challenge1}. Each region can be
-allocated a suitable instance size, forming a well-balanced resource
-configuration portfolio based on its demand profile.
-
-\begin{figure}[t]
-  \centering
-  \includegraphics[width=0.9\linewidth]{figures/background/challenge1_mix.png}
-  \caption{Workload-split based resource configuration portfolio for a function.}
-  \label{fig:challenge1}
-\end{figure}
-
-% 2）挑战2：副本放置挑战：动态资源分配打破了原有的静态资源分配假设，容器的资源需求不再是固定的，不能仅在容器启动和销毁时考虑节点资源分配
+% 1）挑战1：副本放置挑战：动态资源分配打破了原有的静态资源分配假设，容器的资源需求不再是固定的，不能仅在容器启动和销毁时考虑节点资源分配
 % strawman solution：发生扩容剩余节点资源不足时直接evict其他同节点容器，但带来缓存损失，且可能放大（相对较大规格的容器扩容，可能一下需要evict多个小规格容器）
 % appeal for Minimal-Disruption Placement Scaling with multi-resource balance awareness
 
@@ -176,12 +156,31 @@ latency. Additionally, fragmentation can occur when resource requests shrink.
 These challenges can degrade utilization and throughput during dynamic swarming.
 
 We require a minimal-disruption placement strategy that is aware of
-multi-resource needs. It should favor in-place growth using precise headroom,
-limit preemptions, and choose victims that maintain cache locality. Furthermore,
-it should balance the CPU:memory mix per node to prevent fragmentation, employing
-targeted micro-migrations only when they minimize overall disruption. Such policies
-encourage managed churn, safeguard warm states, and enhance packing efficiency
-and throughput during dynamic resizing.
+multi-resource needs. It should balance the CPU:memory mix per node to prevent 
+fragmentation, employing targeted part-migrations only when they minimize overall 
+disruption. Such policies encourage managed churn, safeguard warm states, and 
+enhance packing efficiency and throughput during dynamic resizing.
+
+% 2) 挑战2：资源分配+副本扩缩挑战：如何确定一个函数的容器的资源组合（比如1核1个、2核1个、3核1个），以便在高效利用资源的同时，满足函数的动态资源需求
+% appeal for workload-split based 资源组合分配
+
+\textcolor{blue}{\paraf{Challenge 2: Function Resource Configuration Portfolio.}
+When configuring dynamic and non-uniform resource configurations for serverless
+containers, it is essential to fit known workload patterns with an appropriate
+portfolio of instance sizes. Improper sizing can lead to inefficiencies such as
+resource overprovisioning, inflated costs, and potential violations of service
+level objectives (SLOs). This appeals for a workload-splitting formulation that
+divides the function's resource-usage distribution into distinct regions, as
+illustrated by the histogram in Figure~\ref{fig:challenge1}. Each region can be
+allocated a suitable instance size, forming a well-balanced resource
+configuration portfolio based on its demand profile.}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.95\linewidth]{figures/background/cpu_density_4funcs_134_127_170_206.pdf}
+  \caption{Workload-split based resource configuration portfolio for a function.}
+  \label{fig:challenge1}
+\end{figure}
 
 % todo: 请按需加图
 
@@ -209,8 +208,7 @@ and throughput during dynamic resizing.
 
 \begin{figure}[t]
   \centering
-  \includegraphics[width=0.7\linewidth]
-  {figures/background/cpu_mem_ratio_hist.png}
+  \includegraphics[width=0.95\linewidth]{figures/background/cdf_cpu_memory_ratio.pdf}
   \caption{Heterogeneous CPU:memory ratios across functions.}
   \label{fig:cpu_mem_ratio_hist}
 \end{figure}

@@ -79,7 +79,7 @@ def synth_many_functions_std(num_functions=400, min_inv=300, max_inv=4000, rng=N
     return np.array(stds)
 
 
-def plot_figure(single_cpu, per_function_stds, save_path="./usage_variation.png"):
+def plot_figure(single_cpu, per_function_stds, save_path="./usage_variation.pdf"):
     """
     Plot the two-panel figure:
       (a) Per-invocation CPU usage histogram (single function)
@@ -107,11 +107,11 @@ def plot_figure(single_cpu, per_function_stds, save_path="./usage_variation.png"
     ax.set_xlabel("CPU usage")
     ax.set_ylabel("Density")
     # Label (a), centered below the axis (outside)
-    ax.text(
-        0.5, -0.30, "(a) FUNC-A Per-invocation CPU usage",
-        transform=ax.transAxes, ha="center", va="top",
-        fontsize=16, fontweight="bold", clip_on=False
-    )
+    # ax.text(
+    #     0.5, -0.30, "(a) FUNC-A Per-invocation CPU usage",
+    #     transform=ax.transAxes, ha="center", va="top",
+    #     fontsize=16, fontweight="bold", clip_on=False
+    # )
 
     # Panel (b): distribution of per-function std of CPU usage
     ax = axes[1]
@@ -119,11 +119,11 @@ def plot_figure(single_cpu, per_function_stds, save_path="./usage_variation.png"
     ax.set_xlabel("Standard deviation of CPU usage")
     ax.set_ylabel("Density")
     # Label (b), centered below the axis (outside)
-    ax.text(
-        0.5, -0.30, "(b) Distribution of per-function std",
-        transform=ax.transAxes, ha="center", va="top",
-        fontsize=16, fontweight="bold", clip_on=False
-    )
+    # ax.text(
+    #     0.5, -0.30, "(b) Distribution of per-function std",
+    #     transform=ax.transAxes, ha="center", va="top",
+    #     fontsize=16, fontweight="bold", clip_on=False
+    # )
 
     # Optional: tidy x-lims to focus on the bulk mass
     xmax_a = np.quantile(single_cpu, 0.995)
