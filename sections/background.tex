@@ -1,53 +1,32 @@
 \section{Background and Motivation}
 \label{sec:background}
 
-\subsection{Existing resource management in Serverless}
+\subsection{Resource Management of Serverless Computing}
 \label{sec:background:resource-management}
 
 % 1. serverless的资源管理模式: 静态资源分配管理
 % 把 resource allocation 分为两个步骤，一个是节点-level的资源分配，即运行时的核数和内存，另一个cluster-level的资源分配，即是函数容器副本扩缩容和放置，即决定副本数量、并将容器放置到具体的节点。
 
-Serverless computing has emerged as a popular cloud application paradigm. It allows
-developers to focus on application logic by offloading infrastructure tasks. These
-tasks include provisioning, scaling, and maintenance. This model is event-driven.
-Users provide their code (functions) with basic resource specifications, like memory
-and CPU limits. They also set simple triggers. The platform then provisions
-sandboxed execution environments and manages their lifecycle. It also performs
-on-demand autoscaling and offers pay-per-use billing. Effective resource management
-in serverless platforms is essential to ensure performance, increase utilization, and minimize cost.
+Serverless computing has emerged as a promising cloud paradigm, allowing developers to focus on application logic by abstracting away infrastructure tasks such as provisioning, scaling, and maintenance. In this event-driven model, users simply provide code (functions) with basic resource specifications and triggers. The platform then orchestrates the entire lifecycle\textemdash provisioning sandboxed environments, performing on-demand autoscaling, and managing pay-per-use billing. Consequently, efficient resource management within these platforms is essential to ensure high performance, maximize utilization, and minimize costs.
 
-In practice, resource management in serverless platforms involves two main dimensions:
-(1) per-instance resource configuration, which specifies the resource limits for each function
-sandbox, and (2) per-function resource configuration, which encompasses autoscaling
-(determining the number of instances to run) and instance placement (deciding where to position them in the cluster).
-Currently, both configurations rely on static and uniform resource settings for each function,
-which we detail as follows.
+In practice, resource management in serverless platforms encompasses two primary dimensions: i) per-instance resource configuration, which defines the resource limits for individual function sandboxes; and ii) per-function orchestration, which governs autoscaling (instance count) and placement (node selection). Currently, both dimensions rely on static and uniform settings, as detailed below. \junyi{This is a very strong argument. I doubt this. should ask Bowen to double check}
 
-\parabf{Static runtime resource allocation.}
+\parabf{Per-instance resource allocation.}
 % 1) 静态的运行时资源配置：介绍 lambda 支持指定固定资源规格，及其对延迟和开销的影响，所以选取一个所有请求都不违背qos的配置
-Existing serverless platforms~\cite{Doc:Azure_Functions_Hosting,
-Doc:GCP_CloudRun_Mem, aws_lambda} and serverless research~\cite{ASPLOS21:FaasCache, shahrad2020serverless, wang2018peeking, pu2019shuffling}
-allocate a uniform amount of resources for all instances of a given function. In AWS Lambda, a
-developer specifies a memory size (e.g., 128 MB–10,240 MB), from which the
-platform derives proportional vCPU and network bandwidth shares. Developers may
-also set ephemeral storage per instance (default 512 MB, configurable up to
-several GB). These limits remain fixed throughout the sandbox's lifetime.
-Similar static per-instance specifications are used by Azure Functions~\cite{Doc:Azure_Functions_Hosting} and
-Google Cloud Run~\cite{Doc:GCP_CloudRun_Mem}. This
-approach presumes uniform resource demand across function invocations.
-Operators typically select the smallest configuration that satisfies the
-function's QoS (e.g., latency SLO) to minimize costs.
+Existing serverless computing systems from both industry~\cite{Doc:Azure_Functions_Hosting,
+Doc:GCP_CloudRun_Mem, aws_lambda} and academia~\cite{ASPLOS21:FaasCache, shahrad2020serverless, wang2018peeking, pu2019shuffling}
+allocate a uniform amount of resources for all instances of a given function. In AWS Lambda, a developer specifies a memory size (e.g., 128 MB--10,240 MB), from which the platform derives proportional vCPU and network bandwidth shares~\cite{aws_lambda}. Developers may also set ephemeral storage per instance (default 512 MB, configurable up to a few gigabytes). These limits remain fixed throughout the sandbox's lifetime. Similar static per-instance specifications are used by Azure Functions~\cite{Doc:Azure_Functions_Hosting} and Google Cloud Run~\cite{Doc:GCP_CloudRun_Mem}. This approach presumes uniform resource demand across function invocations. A user typically selects the smallest configuration that satisfies the function's QoS (e.g., latency SLO) to minimize costs. \todo{add some citations}
 
 %  已有工作: 运行时资源配置：根据 profile 进行 static 资源分配，在延迟和开销间做合理tradeoff，引用一些相关工作，如 
 Optimizations on the static per-instance resource allocation focus on
-profile-guided static tuning~\cite{aws_lambda_power_tuning,ASPLOS21:FaasCache, shahrad2020serverless, wang2018peeking, pu2019shuffling}
+profile-guided parameter tuning~\cite{aws_lambda_power_tuning,ASPLOS21:FaasCache, shahrad2020serverless, wang2018peeking, pu2019shuffling} \todo{jolteon and ditto?}
 is common in FaaS: functions are profiled
 across discrete memory tiers to obtain latency–cost curves, and the
 cheapest configuration satisfying SLOs is selected. Provider tooling
 automates this search, while studies characterize sensitivity and
 per-function heterogeneity; research further leverages these profiles
 to set memory/CPU reservations that minimize cost under QoS
-constraints.
+constraints. \junyi{this paragraph need significant polish}
 
 \parabf{Serverless sandbox autoscaling and placement based on static resource configuration.}
 % 2）根据静态资源配置进行容器扩缩容放置：现有的 serverless 系统大多基于静态资源配置进行容器放置调度
