@@ -90,18 +90,28 @@ have been proposed for serverless workflows to reduce data transfer overheads be
 \subsection{Function Resource Demand Analysis}
 \label{sec:background:demand-analysis}
 
-% 1) 函数资源占用的特点
-\paraf{Resource Usage Variation Across Invocations.}
-Invocations of the same serverless function can show significant differences in
-resource consumption. For instance, analyzing CPU usage at the invocation level
-for a representative function produces a wide empirical distribution, as shown in the probability density histogram in 
-Figure~\ref{fig:usage_variation}(a). This suggests that inputs, execution paths, and
-runtime conditions greatly affect demand. To quantify this within-function variability,
-we calculate the standard deviation of invocation-level resource usage for each function
-as a measure of variability. Analyzing many functions, Figure~\ref{fig:usage_variation}(b)
-displays the distribution (as a density plot) of these per-function standard deviations; the notable presence
-of high values indicates that substantial invocation-to-invocation variability is typical.
-Similar patterns are observed for memory~usage.
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.95\linewidth]{figures/background/cpu_memory_ratio_histogram.pdf}
+  \caption{Heterogeneous CPU:memory ratios across functions.}
+  \label{fig:cpu_mem_ratio_hist}
+\end{figure}
+
+% 1) 函数级别需求分布
+\paraf{Resource Usage Variation Across Functions.}
+The resource demands of serverless functions are highly heterogeneous. We quantify 
+this heterogeneity by analyzing the execution traces of 162 real-world functions 
+from the open-source Huawei dataset~\cite{huawei_dataset}, computing for each the 
+ratio of the average function CPU usage to memory usage (in core/GB). 
+Figure~\ref{fig:cpu_mem_ratio_hist} presents the probability histogram of these 
+ratios across all functions.\footnote{The statistical results shown are from the 
+[Request Table Module, Region 4]. We observed similar distributions in other 
+regions of the dataset.} The distribution is highly dispersed, with ratios ranging 
+from 0.09 to 9.20 and a high CV of 62.43\%, indicating that some functions are 
+intensely CPU-bound while others are predominantly memory-bound. This substantial 
+variation in intrinsic resource profiles implies that a scheduler unaware of such 
+differences is prone to creating resource fragmentation, where one resource type 
+is exhausted on a node while another remains underutilized.
 
 \begin{figure}[t]
     \centering
@@ -111,28 +121,74 @@ Similar patterns are observed for memory~usage.
 \label{fig:usage_variation}
 \end{figure}
 
-% 2) 现有调度方案的问题
-\parabf{Drawback of existing solutions: Static resource allocation waste resources.}
-Static, uniform per‑instance sizing ignores intra‑function resource usage variability.
-When set to a high tier, most invocations are overprovisioned, wasting CPU/memory
-and inflating cost. When set to a low tier, peak‑demand invocations are
-underprovisioned, causing throttling, queuing, memory overflow.
-Fixed sizing also worsens data locality and resource fragmentation.
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.95\linewidth]{figures/background/cpu_density_4funcs_134_127_170_206.pdf}
+  \caption{Representative distributions of function resource consumption.}
+    \vspace{-15pt}
+  \label{fig:usage_patterns}
+\end{figure}
+
+% 2) 调用级别资源占用
+\paraf{Resource Usage Variation Across Invocations.}
+Resource demand also exhibits significant variation across different invocations 
+of the same function. Focusing on CPU usage as an illustrative metric, we compute 
+the CV for the resource consumption of each function across its invocations. The 
+distribution of these CV values is presented in Figure~\ref{fig:usage_variation}. 
+Our analysis reveals that for a substantial portion (41\%) of functions, the CV 
+exceeds 50\%, indicating that these functions have a highly dispersed resource 
+demand profile. A further 21\% of functions exhibit a moderate degree of variation, 
+with CV values between 15\% and 50\%. Only 38\% of functions demonstrate relatively 
+stable resource requirements (CV < 15\%). 
+
+To provide deeper insight into these statistical patterns, Figure~\ref{fig:usage_patterns} 
+illustrates four representative resource consumption distributions observed in 
+the trace: (a) a quasi-normal distribution (where the truncated right tail is 
+attributed to the imposed per-instance resource limit); (b) a long-tailed 
+distribution; (c) a concentrated distribution; and (d) certain atypical cases 
+that do not conform to standard distributions, potentially influenced by specific 
+input parameter distributions or external factors. This intra-function variability 
+necessitates a scheduling mechanism that can adapt to dynamic, request-level 
+resource needs rather than relying on a static capacity.
+
+
+% % 2) 现有调度方案的问题
+% \parabf{Drawback of existing solutions: Static resource allocation waste resources.}
+% Static, uniform per‑instance sizing ignores intra‑function resource usage variability.
+% When set to a high tier, most invocations are overprovisioned, wasting CPU/memory
+% and inflating cost. When set to a low tier, peak‑demand invocations are
+% underprovisioned, causing throttling, queuing, memory overflow.
+% Fixed sizing also worsens data locality and resource fragmentation.
 
 % 3) Opportunity: 函数动态运行时资源调整 
 % 现有容器框架支持动态运行时资源分配（具体机制或者接口），以及其好处（节省资源减少浪费）
 \parabf{Opportunity: Dynamic in‑place runtime resource adjustment}
-Dynamically aligning each invocation's resource needs with its sandbox allocation
-absorbs bursts and handles intra-function heterogeneity, improving utilization and
-reducing overprovisioning and SLO risks. Kubernetes enables in‑place vertical 
-scaling without pod recreation via the Pod resize subresource, allowing live updates 
-to both CPU and memory resource requests and limits. Memory scaling is achieved by modifying cgroup limits,
-which dynamically changes the memory allocation for a running container without stopping it.
-Similarly, CPU resources can be adjusted by altering cgroup CPU shares and quotas, allowing the kubelet
-to allocate CPU cycles according to usage metrics and policy constraints \cite{Doc:K8s_Pod_Resize, Doc:K8s_CRI_Update}.
-This ensures that all resources can be increased or decreased to respond to real-time demands.
-A serverless control plane can utilize these features to dynamically adjust sandboxes for
-both CPU and memory, optimizing resources while preserving state and improving cost and latency efficiency.
+A key opportunity to address the intra-function variability lies in recent container 
+runtime enhancements that support dynamic, in-place resource adjustment. Specifically, 
+platforms like Kubernetes now allow the resource allocations (CPU and memory) of 
+a running pod to be updated without restarting it, via mechanisms such as the Pod 
+resize subresource and live cgroup updates~\cite{Doc:K8s_Pod_Resize, Doc:K8s_CRI_Update}.
+This capability enables a container's assigned resources to be aligned in real 
+time with the actual demand of the request it is processing. It thus provides a 
+foundational mechanism to move beyond static per-function allocation, toward a 
+fine-grained model where resources can be expanded or contracted per invocation. 
+It absorbs demand bursts, reduces stranded resources from over-provisioning, 
+and lowers SLO violation risks—all while preserving the state and performance 
+benefits of a warm sandbox.
+
+% Kubernetes enables in‑place vertical scaling without pod recreation via the Pod 
+% resize subresource, allowing live updates to both CPU and memory resource requests 
+% and limits. CPU resources can be adjusted by altering cgroup CPU shares and quotas, 
+% allowing the kubelet to allocate CPU cycles according to usage metrics and policy 
+% constraints. Similarly, memory scaling is achieved by modifying cgroup limits,
+% which dynamically changes the memory allocation for a running container without 
+% stopping it.\cite{Doc:K8s_Pod_Resize, Doc:K8s_CRI_Update}. Dynamically aligning 
+% each invocation's resource demands with its sandbox allocation absorbs bursts and 
+% handles intra-function heterogeneity, improving utilization and reducing 
+% overprovisioning and SLO risks. This ensures that all resources can be increased 
+% or decreased to respond to real-time demands. A serverless control plane can 
+% utilize these features to dynamically adjust sandboxes for both CPU and memory, 
+% optimizing resources while preserving state and improving cost and latency efficiency.
 
 % 3. 动态资源分配的挑战
 
@@ -143,7 +199,7 @@ both CPU and memory, optimizing resources while preserving state and improving c
 % strawman solution：发生扩容剩余节点资源不足时直接evict其他同节点容器，但带来缓存损失，且可能放大（相对较大规格的容器扩容，可能一下需要evict多个小规格容器）
 % appeal for Minimal-Disruption Placement Scaling with multi-resource balance awareness
 
-\paraf{Challenge 2: Placement under Dynamic In-Place Resizing.} Dynamic in-place
+\paraf{Challenge 1: Placement under Dynamic In-Place Resizing.} Dynamic in-place
 resizing disrupts the fixed-size bin-packing model: a sandbox’s footprint may
 expand while active, making node feasibility assessments at start/stop times
 inadequate. A simplistic approach is to evict co-located sandboxes to make space
@@ -160,27 +216,6 @@ multi-resource needs. It should balance the CPU:memory mix per node to prevent
 fragmentation, employing targeted part-migrations only when they minimize overall 
 disruption. Such policies encourage managed churn, safeguard warm states, and 
 enhance packing efficiency and throughput during dynamic resizing.
-
-% 2) 挑战2：资源分配+副本扩缩挑战：如何确定一个函数的容器的资源组合（比如1核1个、2核1个、3核1个），以便在高效利用资源的同时，满足函数的动态资源需求
-% appeal for workload-split based 资源组合分配
-
-\textcolor{blue}{\paraf{Challenge 2: Function Resource Configuration Portfolio.}
-When configuring dynamic and non-uniform resource configurations for serverless
-containers, it is essential to fit known workload patterns with an appropriate
-portfolio of instance sizes. Improper sizing can lead to inefficiencies such as
-resource overprovisioning, inflated costs, and potential violations of service
-level objectives (SLOs). This appeals for a workload-splitting formulation that
-divides the function's resource-usage distribution into distinct regions, as
-illustrated by the histogram in Figure~\ref{fig:challenge1}. Each region can be
-allocated a suitable instance size, forming a well-balanced resource
-configuration portfolio based on its demand profile.}
-
-\begin{figure}[t]
-  \centering
-  \includegraphics[width=0.95\linewidth]{figures/background/cpu_density_4funcs_134_127_170_206.pdf}
-  \caption{Workload-split based resource configuration portfolio for a function.}
-  \label{fig:challenge1}
-\end{figure}
 
 % todo: 请按需加图
 
@@ -205,13 +240,6 @@ configuration portfolio based on its demand profile.}
 %   tight capacity.}
 %   \label{fig:challenge2_placement}
 % \end{figure}
-
-\begin{figure}[t]
-  \centering
-  \includegraphics[width=0.95\linewidth]{figures/background/cdf_cpu_memory_ratio.pdf}
-  \caption{Heterogeneous CPU:memory ratios across functions.}
-  \label{fig:cpu_mem_ratio_hist}
-\end{figure}
 
 
 % 3）挑战3：资源缩容本身有成本挑战：扩容成本低，但缩容成本高。对于请求量没那么大的函数有难度。
@@ -251,10 +279,12 @@ requests, the scheduler reduces downsizing overheads by 33.3\%, leading to lower
 overall latency and higher system throughput.
 \begin{figure}[t]
   \centering
-  \includegraphics[width=1.0\linewidth]
-  {figures/background/vertical.pdf}
+  \subfloat[]{\includegraphics[trim=0 80pt 400pt 0, clip, width=0.47\linewidth]{figures/background/vertical.pdf}}
+  \hfil
+  \subfloat[]{\includegraphics[trim=400pt 80pt 0 0, clip, width=0.47\linewidth]{figures/background/vertical.pdf}}
   \caption{Vertical scaling-based task scheduling mitigates downsizing overhead
-  by reordering requests.}
+  by reordering requests. (a) Naïve resizing, Cost = 12. (b) Monotonic Scale-up, Cost = 8.}
+  \vspace{-15pt}
   \label{fig:vertical_scaling_scheduling}
 \end{figure}
 
