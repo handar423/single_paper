@@ -211,8 +211,8 @@ of smaller colocated sandboxes, leading to cache losses and increased tail
 latency. Additionally, fragmentation can occur when resource requests shrink.
 These challenges can degrade utilization and throughput during dynamic swarming.
 
-We require a minimal-disruption placement strategy that is aware of
-multi-resource needs. It should balance the CPU:memory mix per node to prevent 
+We require a complementary swarming placement strategy that is aware of
+multi-resource needs, minimizing sandbox disruption. It should balance the CPU:memory mix per node to prevent 
 fragmentation, employing targeted part-migrations only when they minimize overall 
 disruption. Such policies encourage managed churn, safeguard warm states, and 
 enhance packing efficiency and throughput during dynamic resizing.
@@ -269,7 +269,7 @@ incurs reclaim costs repeatedly, disrupts page cache and JIT/heap state, and
 increases scheduler interference. Both approaches decrease utilization and system
 throughput, negating the advantages of dynamic scaling.
 
-We propose a vertical-scaling-aware scheduler that orders invocations by predicted
+We propose a monotonic scale-up scheduler that orders invocations by predicted
 demand within short batching windows. Each sandbox handles small, then medium,
 then large requests, growing steadily and shrinking at most once per window during
 quiescence. This approach amortizes reclamation, maintains warm state, and

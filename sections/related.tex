@@ -19,7 +19,7 @@ ignoring the significant per-invocation resource usage variations.
 Such static allocation can lead to over-provisioning for lightweight invocations,
 resulting in suboptimal utilization.
 By enabling dynamic resizing of serverless function resources, our work
-addresses this limitation, allowing for more efficient resource usage.
+addresses this limitation, allowing for more efficient resource~usage.
 
 
 \parabf{Scheduling serverless function instances.}
@@ -56,7 +56,7 @@ Complementary efforts make prewarming cheaper by accelerating startup (e.g., Cat
 All these efforts focus on optimizing autoscaling and placement under the assumption
 of static resource allocation per function instance and may cause severe evictions
 when dynamic resizing of function instances is enabled.
-Our work mitigates eviction during function resizing by leveraging a minimal-disruption
+Our work mitigates eviction during function resizing by leveraging a complementary swarming
 placement strategy to reduce the likelihood of eviction during scaling,
 thus improving overall performance and resource efficiency.
 

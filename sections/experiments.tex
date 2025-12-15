@@ -104,8 +104,8 @@ strategy that assigns a priority to each kept-alive instance and evicts low-prio
 instances first under resource pressure. To ensure a fair comparison and minimize 
 the impact of engineering artifacts, we reimplement both baselines in our prototype 
 environment. Furthermore, to better reflect real-world production settings while 
-maintaining controlled conditions, we enable Kubernetes vertical pod autoscaling 
-(VPA) across all systems during evaluation (see prototype implementation details 
+maintaining controlled conditions, we enable Kubernetes pod in-place scaling 
+across all systems during evaluation (see prototype implementation details 
 in Section~\ref{sec:implementation}).
 
 \parabf{Metric.} We evaluate system performance using memory utilization, CPU 
@@ -161,10 +161,10 @@ predictable end-to-end performance, even when co-locating diverse benchmarks wit
 varying resource demands and execution characteristics.
 
 The performance gains of \sysname are primarily attributed to two mechanisms. 
-First, the workload-splitting-based instance placement strategy enables individual 
+First, the complementary swarming instance placement strategy enables individual 
 servers to serve fewer functions, thereby increasing instance reuse probability. 
 This approach also aligns server workload with resource capacity, avoiding resource 
-waste caused by load-resource mismatch. Second, the vertical-scaling-based task 
+waste caused by load-resource mismatch. Second, the monotonic scale-up task 
 scheduling policy reduces both resource over-provisioning and cold-start frequency, 
 further boosting overall resource utilization.
 
@@ -226,7 +226,7 @@ to 44.89\%$\sim$44.06\%, memory utilization gains increase from 41.81\%$\sim$43.
 to 55.42\%$\sim$57.37\%, and task throughput improvements expand from 45.22\%$\sim$51.06\% 
 to 75.45\%$\sim$78.98\%.
 
-This scaling trend can be attributed to the workload-splitting strategy. With 
+This scaling trend can be attributed to the complementary swarming instance placement. With 
 fewer benchmarks, each server already operates on a limited set of functions, 
 leaving limited room for further optimization through instance reuse. In contrast, 
 when the workload is larger and more diverse, the strategy reduces the number of 
@@ -275,7 +275,7 @@ involves a larger number of high-load functions competing for server resources
 simultaneously. This competition creates more optimization potential for the 
 \sysname strategy. Moreover, even with only two high-load functions, \sysname 
 still achieves around 20\%$\sim$30\% higher resource utilization and task throughput 
-than the baselines. This gain is primarily because the vertical-scaling-based 
+than the baselines. This gain is primarily because the monotonic scale-up 
 task scheduling policy reduces both instance resource over-provisioning and 
 cold-start frequency through task reordering, thereby enhancing overall 
 resource~efficiency.
@@ -312,9 +312,9 @@ it reduces the share for Cold Start by 83.65\%$\sim$83.56\%. A similar trend is
 observed for memory utilization.
 
 The resource utilization advantage of \sysname stems from the reduction in cold 
-starts. This is achieved through two strategies. First, the workload-splitting-based 
+starts. This is achieved through two strategies. First, the complementary swarming 
 instance placement concentrates a narrower set of functions on each server, which 
-increases instance reuse opportunities. Second, the vertical-scaling-based task 
+increases instance reuse opportunities. Second, the monotonic scale-up task 
 scheduling policy reorders tasks and dynamically adjusts instance resources, 
 enabling instances to serve varying demands throughout their lifecycle without 
 repeated cold starts or static over-provisioning.
@@ -340,10 +340,10 @@ probability of warm starts.
 In this section, we investigate the impact of the techniques employed by 
 \sysname. We measure \sysname with the following two simplified versions:
 \begin{itemize}
-    \item \textbf{Placement*}: This variant uses only the workload-splitting-based 
+    \item \textbf{Placement*}: This variant uses only the complementary swarming 
     instance placement strategy, while tasks within each server are scheduled using 
     a simple FIFO policy.
-    \item \textbf{Scheduling*}: This variant uses only the vertical-scaling-based 
+    \item \textbf{Scheduling*}: This variant uses only the monotonic scale-up 
     task scheduling policy within each server, while user requests are randomly 
     assigned across servers.
 \end{itemize}
@@ -357,9 +357,9 @@ and \sysname. Compared to the baselines, it achieves improvements of 20.07\%$\si
 16.90\%$\sim$17.23\%, and 17.31\%$\sim$15.74\% in CPU utilization, memory utilization, 
 and task throughput, respectively. However, it still falls short of \sysname by 
 16.39\%, 17.33\%, and 23.62\% in the metrics. These results demonstrate that the 
-workload-splitting-based instance placement strategy alone can effectively enhance 
+complementary swarming instance placement strategy alone can effectively enhance 
 scheduling performance through load partitioning. Furthermore, it requires integration 
-with the vertical-scaling-based task scheduling policy for fine-grained, 
+with the monotonic scale-up task scheduling policy for fine-grained, 
 server-internal resource management to achieve optimal performance.
 
 The performance of the Scheduling* variant reveals a more nuanced trade-off. It 
@@ -369,7 +369,7 @@ higher task throughput. This discrepancy occurs because Scheduling* prioritizes
 tasks with lower resource demands, shorter execution times, and higher invocation 
 frequencies, without explicitly optimizing for overall server utilization.
 
-When integrated with the workload-splitting-based instance placement strategy 
+When integrated with the complementary swarming instance placement strategy 
 (as in \sysname), each server handles a limited, resource-complementary set of 
 functions. This increases the likelihood that tasks with high resource demands 
 are selected for instance setup and execution, raising the execution priority for 

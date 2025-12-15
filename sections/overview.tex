@@ -18,17 +18,17 @@ Figure~\ref{fig:overview} illustrates the overall architecture of \sysname. The
 scheduling framework of \sysname operates at two levels: cluster-wide task 
 dispatching and per-server scheduling. At the cluster level, incoming user requests 
 are first directed to a task dispatcher, which performs initial traffic accounting. 
-The workload-splitting manager continuously collects traffic statistics, function 
+The instance placement manager continuously collects traffic statistics, function 
 metadata, and task performance metrics, periodically executing the instance 
 placement algorithm. The resulting placement plan is fed back to the task dispatcher 
 to guide request-to-server assignments. Tasks assigned to worker nodes are placed 
 into task queues managed by the worker scheduler, which maintains separate queues 
 and priorities for different functions and orchestrates instances within the 
 node—executing tasks and performing vertical resource scaling. We introduce two key 
-techniques in \sysname: workload-splitting-based instance placement, and 
-vertical-scaling-based task scheduling.
+techniques in \sysname: complementary swarming instance placement, and 
+monotonic scale-up task scheduling.
 
-\parabf{Workload-Splitting-based Instance Placement.} \sysname controls instance 
+\parabf{Complementary Swarming Instance Placement} \sysname controls instance 
 placement by establishing a mapping between functions (or, more precisely, subsets 
 of requests from the same function that share a given resource-demand range) and 
 specific worker servers. This mapping dictates how tasks are assigned across the 
@@ -42,7 +42,7 @@ their workload. By controlling the optimization step size of the heuristic
 algorithm, \sysname guarantees algorithm convergence and keeps the computation 
 duration below a hundred milliseconds.
 
-\parabf{Vertical-Scaling-based Task Scheduling}
+\parabf{Monotonic Scale-up Task Scheduling}
 \sysname designs the worker-level scheduling algorithm around the restart-free 
 vertical pod scaling feature of Kubernetes. The scheduler maintains dual task 
 queues, both of which are sorted in ascending order of resource demand. This 
