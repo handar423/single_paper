@@ -20,25 +20,12 @@ allocate a uniform amount of resources for all instances of a given function. In
 %  已有工作: 运行时资源配置：根据 profile 进行 static 资源分配，在延迟和开销间做合理tradeoff，引用一些相关工作，如 
 Optimizations on the static per-instance resource allocation focus on
 profile-guided parameter tuning~\cite{aws_lambda_power_tuning,ASPLOS21:FaasCache, shahrad2020serverless, wang2018peeking, pu2019shuffling} \todo{jolteon and ditto?}
-is common in FaaS: functions are profiled
-across discrete memory tiers to obtain latency–cost curves, and the
-cheapest configuration satisfying SLOs is selected. Provider tooling
-automates this search, while studies characterize sensitivity and
-per-function heterogeneity; research further leverages these profiles
-to set memory/CPU reservations that minimize cost under QoS
-constraints. \junyi{this paragraph need significant polish}
+By profiling functions across discrete resource configurations, this method derives latency–cost curves to identify the cheapest configuration satisfying specific SLOs. An automated tool can then use these profiles to minimize costs under QoS constraints by exploiting per-function heterogeneity.
 
-\parabf{Serverless sandbox autoscaling and placement based on static resource configuration.}
+\parabf{Instance scaling and placement.}
 % 2）根据静态资源配置进行容器扩缩容放置：现有的 serverless 系统大多基于静态资源配置进行容器放置调度
 % 仅容器启动、离开时比较资源：只需维护节点已分配资源和未分配资源总计，任务到来时可以分配到未分配资源>静态请求资源的节点上，更新已分配资源、未分配资源，函数容器销毁时释放资源、更新已分配资源、未分配资源即可
-Existing serverless systems scale~\cite{aws_scaling_window, aws_scaling_eq,
-knative_scaling} and place instances using each function’s
-static per‑instance configuration. With uniform resources per sandbox, autoscalers
-adjust replica counts from load signals, while the scheduler relies on simple
-resource accounting: each node tracks allocated and available capacity.
-A container is admitted to a node only if available is larger or equal to the
-function’s static request (e.g., memory, vCPU); on placement the counters are updated,
-and reverted on termination or eviction. These updates occur only at lifecycle events (start/stop).
+Existing serverless systems perform scaling~\cite{aws_scaling_window, aws_scaling_eq, knative_scaling} and placement based on a static per-function resource requirement. While autoscalers adjust replica counts in response to load, schedulers employ a simple resource accounting model where each node tracks allocated versus available capacity. A container is admitted to a node only if the available capacity meets the function’s static requirement (e.g., memory, vCPU). Crucially, these resource counters are updated only during lifecycle events\textemdash decremented upon placement and incremented upon termination\textemdash ignoring actual usage during execution.
 
 % 已有工作：
 
@@ -47,26 +34,29 @@ For autoscaling, recent systems research uses prediction to
 right-size replicas and proactively prewarm functions. Shahrad et al.
 analyze production traces and propose a per-function histogram policy
 that jointly sets keep-alive and pre-warming windows, cutting cold
-starts at lower cost \cite{shahrad2020serverless}. For workflows,
+starts at lower cost~\cite{shahrad2020serverless}. For workflows,
 Orion models end-to-end SLOs in DAGs and prewarms downstream stages
-with the right look-ahead \cite{ORION_MahgoubYSECB22}.
+with the right look-ahead~\cite{ORION_MahgoubYSECB22}.
 
 % 第二段（或二、三段），函数容器副本放置缓存亲和性、多资源综合考虑调度：考虑（先几句话说缓存为啥重要）缓存是否存在、多资源性质（即预备资源分配），引用文章
 % 可以考虑，包含 FaasCache这种单机容器缓存管理， serverless workflow 相邻stage亲和放置，jiagu这种多节点协同缓存管理，引用更多文章
-Recent advancements in placement strategies consider three main aspects: cache awareness,
+For placement, Recent advancements consider three main aspects: cache awareness,
 heterogeneous resource, and data-affinity, improving cost-efficiency and latency in serverless systems.
-Incorporating cache awareness helps to decrease costs and latency associated with cold starts.
-Different instances can share certain memory states~\cite{SOCK_OakesYZHHAA18, li2022help},
-allowing for rapid and cost-effective instance creation.
-Moreover, considering heterogeneous resource awareness~\cite{RoyPT22, DuLJXZC22} in placement is critical,
-as functions and resources exhibit heterogeneous characteristics.
-This approach minimizes resource wastage and optimizes utilization.
-Additionally, data-affinity aware placement strategies~\cite{Wukong_CarverZWAWC20, ORION_MahgoubYSECB22}
-have been proposed for serverless workflows to reduce data transfer overheads between stages.
+Cache-aware strategies reduce cold start overheads by enabling instances to share initialized memory states~\cite{SOCK_OakesYZHHAA18, li2022help}, allowing for rapid and cost-effective instantiation. Heterogeneity-aware placement~\cite{RoyPT22, DuLJXZC22} optimizes cluster utilization by matching diverse function resource profiles to specific hardware capabilities, thereby minimizing waste. Finally, data-affinity strategies~\cite{Wukong_CarverZWAWC20, ORION_MahgoubYSECB22} focus on serverless workflows, co-locating dependent tasks to reduce data transfer overheads between stages.
+%Incorporating cache awareness helps to decrease costs and latency associated with cold starts.
+%Different instances can share certain memory states~\cite{SOCK_OakesYZHHAA18, li2022help},
+%allowing for rapid and cost-efficient instance creation.
+%Moreover, considering heterogeneous resource awareness~\cite{RoyPT22, DuLJXZC22} in placement is critical,
+%as functions and resources exhibit heterogeneous characteristics.
+%This approach minimizes resource wastage and optimizes utilization.
+%Additionally, data-affinity aware placement strategies~\cite{Wukong_CarverZWAWC20, ORION_MahgoubYSECB22}
+%have been proposed for serverless workflows to reduce data transfer overheads between stages.
+
+
 
 
 % 2. serverless 函数资源需求分析
-\subsection{Function Resource Demand Analysis}
+\subsection{Analysis of Resource Requirements of Functions}
 \label{sec:background:demand-analysis}
 
 \begin{figure}[t]
