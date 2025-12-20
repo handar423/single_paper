@@ -32,13 +32,16 @@ A precise formulation of the placement problem requires clear representations of
 both node resource capacity and function resource demand.
 
 \textbf{Node Resource Capacity.} We model a worker node $N_j$’s available capacity 
-as a two-dimensional resource vector $\mathbf{C}_j = \left(C_j^{cpu}, C_j^{mem}\right)$, 
-representing its spare CPU cores and memory (in GB). For simplicity and clarity 
-of exposition, we focus on CPU and memory as the primary bottleneck resources. 
-Our algorithm can be extended to incorporate other resources (\emph{e.g.}, network 
-bandwidth) by increasing the dimensionality of the capacity vector. To quantify 
-the efficiency of a placement, we define the \textbf{overall resource utilization} 
-of a node \(N_j\) as the sum of its normalized CPU and memory utilization:
+as a two-dimensional resource vector $\mathbf{C}_j = \left(C_j^{\text{cpu}}, C_j^{\text{mem}}\right)$, 
+representing its spare CPU cores and memory (in GB). Similarly, we denote by 
+$\mathbf{C}_j^{\text{idle}} = \left(C_j^{idle,cpu}, C_j^{idle,mem}\right)$ the 
+vector of idle (currently unallocated) resources on $N_j$ at any given moment. 
+For simplicity and clarity of exposition, we focus on CPU and memory as the 
+primary bottleneck resources. Our algorithm can be extended to incorporate other 
+resources (\emph{e.g.}, network bandwidth) by increasing the dimensionality of 
+the capacity vector. To quantify the efficiency of a placement, we define the 
+\textbf{overall resource utilization} of a node \(N_j\) as the sum of its normalized 
+CPU and memory utilization:
 \[
 U(N_j) = \frac{U_j^{\text{cpu}}}{C_{\text{total}}^{\text{cpu}}} + \frac{U_j^{\text{mem}}}{C_{\text{total}}^{\text{mem}}}
 \]
@@ -62,8 +65,8 @@ more nuanced. We characterize it along three orthogonal dimensions:
 
     \item \textbf{Demand Volume ($\mathbf{V}_i$)}: The aggregate resource demand 
     vector for function $F_i$ within the scheduling window, denoted as 
-    $\mathbf{V}_i = \left(V_i^{cpu}, V_i^{mem}\right)$. Here, $V_i^{cpu}$ and 
-    $V_i^{mem}$ represent the predicted total CPU (\emph{e.g.}, in core-seconds) 
+    $\mathbf{V}_i = \left(V_i^{\text{cpu}}, V_i^{\text{mem}}\right)$. Here, $V_i^{\text{cpu}}$ and 
+    $V_i^{\text{mem}}$ represent the predicted total CPU (\emph{e.g.}, in core-seconds) 
     and memory (\emph{e.g.}, in GB-seconds) required to process all expected 
     invocations of $F_i$ in that window, respectively. While the accurate 
     prediction of $V_i$ is orthogonal to our placement algorithm (and its accuracy 
@@ -111,11 +114,11 @@ complementary placement and proportional workload distribution simultaneously.
         \State $F_a \gets \text{RandomChoice}(\{F_i \mid R[i] > 0\})$ 
         \For{$N_j \in \mathcal{N}$}
             \State \textbf{// Assignment via free capacity}
-            \State $\alpha_j^{\text{free}} \gets min(\frac{C_j^{idle\_cpu}}{V_i^{cpu}}, \frac{C_j^{idle\_mem}}{V_i^{mem}})$
+            \State $\alpha_j^{\text{free}} \gets min(\frac{C_j^{\text{idle,cpu}}}{V_i^{\text{cpu}}}, \frac{C_j^{\text{idle,mem}}}{V_i^{\text{mem}}})$
             \State \textbf{// Assignment via beneficial swaps}
-            \State $(\alpha_j^{\text{swap}},\; \mathcal{E}_j) \gets \text{SwapCapacity}(F_a, N_j, \mathbf{L}[j,\cdot], \mathbf{C}_j)$
+            \State $(\alpha_j^{\text{swap}},\; \mathcal{E}_j) \gets \text{SwapCapacity}(F_a, N_j, \mathbf{L}, \mathbf{C}_j^{idle})$
             \Comment{$\mathcal{E}_j$: list of $(F_k, \beta_k)$ evicted}
-            \State $\alpha_j^{\text{max}} \gets min(\alpha_j^{\text{free}} + \alpha_j^{\text{swap}}, R_a)$
+            \State $\alpha_j^{\text{max}} \gets min(\alpha_j^{\text{free}} + \alpha_j^{\text{swap}}, R[a])$
             \State $\Delta U_j \gets \text{UtilGain}(F_a, \alpha_j^{\text{swap}}, \mathcal{E}_j, \mathbf{C}_j, \mathbf{C}_{\text{total}})$
         \EndFor
 
@@ -130,10 +133,11 @@ complementary placement and proportional workload distribution simultaneously.
     \EndWhile
     \State
 
-    \State \textbf{// Step 3: Generate $\mathcal{P}$ from $L$ and $D_i$}
+    \State \textbf{// Step 3: Generate $\mathcal{P}$ from $L$}
     \For{$F_i \in \mathcal{F}$}
         \State $p_{\text{start}} \gets 0.0$ \Comment To store workload percentile range
         \For{$N_j \in \mathcal{N}$, where $L[j,i] > 0$, in arbitrary order}
+            \State // We use half‑open intervals $[p_s, p_e)$, except the last interval which is closed at $1$.
             \State $\mathcal{P}(F_i, [p_{\text{start}}, p_{\text{start}} + L[j,i])) \gets N_j$ 
             \State $p_{\text{start}} \gets p_{\text{start}} + L[j,i]$
         \EndFor
@@ -153,66 +157,184 @@ Algorithm~\ref{alg:placement} presents the complementary swarming placement
 algorithm. It takes as input the set of nodes $\mathcal{N}$ with their capacity 
 vectors $\mathbf{C}_j$, and the set of functions $\mathcal{F}$ with their demand 
 profiles $\langle r_i, \mathbf{V}_i, D_i \rangle$. The algorithm outputs a placement 
-strategy $\mathcal{P}: \mathcal{F} \times [0,1] \to \mathcal{N}$ that maps function 
-workloads to worker nodes. When the workload of a single function must be distributed 
-across multiple worker nodes, the strategy splits the load based on the scale of 
-invocation resource demand. For example, $\mathcal{P}(F_i, [0, 0.5]) = a$ and 
-$\mathcal{P}(F_i, (0.5, 1.0]) = b$ means that the workload of $F_i$ is split 
-evenly between nodes $a$ and $b$, where invocations with smaller resource demands 
-are deployed to $a$ and those with larger demands to $b$.
+mapping $\mathcal{P}: \mathcal{F} \times [0,1] \to \mathcal{N}$. This mapping 
+determines task dispatch: when a function's workload is split across multiple 
+nodes, $\mathcal{P}$ assigns each percentile of the function's resource‑demand 
+distribution to a specific node. This percentile‑based splitting is illustrated 
+in Fig.~\ref{fig:placement_p}.
 
 \textbf{Step 1: Initialization \& Demand Normalization.}
 The algorithm maintains two key data structures initialized in this step: i) a 
 pending assignment vector $\mathbf{R}$, where $R[i]$ denotes the fraction of 
 $F_i$ demand yet to be placed, initialized to $1$ for all functions; and ii) an 
 assignment matrix $\mathbf{L}$, where $L[j,i]$ records the fraction of $F_i$ 
-demand currently assigned to node $N_j$, initialized to all zeros. Furthermore, 
-we scales the demand vector $\mathbf{V}_i$ of each function proportionally so 
-that the aggregate demand matches the total cluster capacity 
+demand currently assigned to node $N_j$, initialized to all zeros (line~2). 
+Furthermore, we scales the demand vector $\mathbf{V}_i$ of each function 
+proportionally so that the aggregate demand matches the total cluster capacity 
 ($\sum_i \mathbf{V}_i = \sum_j \mathbf{C}_j$). This normalization ensures the 
-subsequent placement operates under a balanced supply-demand premise. 
+subsequent placement operates under a balanced supply-demand premise (Line~3$\sim$4). 
 
 \textbf{Step 2: Iterative Optimization Loop.}
 The core of the algorithm is an iterative loop that runs until all function demands 
-are placed ($R[i]=0, \forall i$). In each iteration, it randomly selects a function 
-$F_a$ with pending demand ($R[a] > 0$). For each node $N_j$, the algorithm evaluates 
-two ways to accommodate $F_a$: i) using the idle node resources, which yields 
-a capacity $\alpha_j^{\text{free}}$ computed as the minimum ratio of idle 
-CPU/memory to $F_a$ demand; and ii) through beneficial swaps, where the subroutine 
-$\text{SwapCapacity}$ attempts to evict already-placed functions in order to host 
-as much of $F_a$ demand as possible, provided that doing so improves the node 
-utilization $U_j$ (detailed in Algorithm~2). $\text{SwapCapacity}$ returns both 
-the maximum $F_a$ demand fraction $\alpha_j^{\text{swap}}$ that can be hosted by 
+are placed ($R[i]=0, \forall i$, Line~7). In each iteration, it randomly selects 
+a function $F_a$ with pending demand ($R[a] > 0$, Line~8). For each node $N_j$, 
+the algorithm evaluates two ways to accommodate $F_a$: i) using the idle node 
+resources, which yields a capacity $\alpha_j^{\text{free}}$ computed as the 
+minimum ratio of idle CPU/memory to $F_a$ demand (Line~11); and ii) through 
+beneficial swaps, where the subroutine $\text{SwapCapacity}$ attempts to evict 
+already-placed functions in order to host as much of $F_a$ demand as possible, 
+provided that doing so improves the node utilization $U_j$ (Line~13, detailed 
+in Algorithm~\ref{alg:swap-capacity}). $\text{SwapCapacity}$ returns both the 
+maximum $F_a$ demand fraction $\alpha_j^{\text{swap}}$ that can be hosted by 
 function swaping, and a list $\mathcal{E}_j$ of evicted functions, each with the 
 evicted load fraction $\beta$. The total accommodation capacity for $F_a$ on 
-$N_j$ is then $\alpha_j^{\text{max}} = \min(\alpha_j^{\text{free}}+\alpha_j^{\text{swap}}, R[a])$.
+$N_j$ is then $\alpha_j^{\text{max}} = \min(\alpha_j^{\text{free}}+\alpha_j^{\text{swap}}, R[a])$ 
+(Line~14).
 
 After evaluating all nodes, the algorithm sorts them in descending order of the 
-utilization gain $\Delta U_j$ and assigns $F_a$ pending demand greedily. For each 
-node in this order, it assigns up to $\alpha_j^{\text{max}}$ of $F_a$ demand, 
-updates $\mathbf{L}$ and $\mathbf{R}$, and simultaneously processes the evictions 
-in $\mathcal{E}_j$: for each function $F_k$ in $\mathcal{E}_j$, the algorithm 
-reducing the evicted fraction $\beta_k$ in $\mathbf{L}[j, k]$ and adds $\beta_k$ 
-back to $F_k$ pending demand $\mathbf{R}[k]$. This process continues until $F_a$ 
-demand is fully placed ($R[a]=0$). Because the total function demand was scaled 
-to match the total cluster capacity in Step 1, it is guaranteed that $F_a$ demand 
-can eventually be fully accommodated, and the loop will not terminate with 
-$R[a] > 0$. To ensure the loop convergence speed, the algorithm skips nodes whose 
-utilization gain $\Delta U_j$ is below a predefined empirical threshold 
-(\emph{e.g.}, 1\%).
+utilization gain $\Delta U_j$ (Line~17) and assigns $F_a$ pending demand greedily. 
+For each node in this order, it assigns up to $\alpha_j^{\text{max}}$ of $F_a$ demand, 
+updates $\mathbf{L}$ and $\mathbf{R}$ (Line~19), and simultaneously processes 
+the evictions in $\mathcal{E}_j$: for each function $F_k$ in $\mathcal{E}_j$, 
+the algorithm reducing the evicted fraction $\beta_k$ in $\mathbf{L}[j, k]$ and 
+adds $\beta_k$ back to $F_k$ pending demand $\mathbf{R}[k]$ (Line~21). This process 
+continues until $F_a$ demand is fully placed ($R[a]=0$). Because the total 
+function demand was scaled to match the total cluster capacity in Step 1, it is 
+guaranteed that $F_a$ demand can eventually be fully accommodated, and the loop 
+will not terminate with $R[a] > 0$. To ensure the loop convergence speed, the 
+algorithm skips nodes whose utilization gain $\Delta U_j$ is below a predefined 
+empirical threshold (\emph{e.g.}, 1\%).
+
+{
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{figures/design/placement_p.pdf}
+  \vspace{-10pt}
+  \caption{Generate $\mathcal{P}$ from $L$,.}
+  \vspace{-10pt}
+  \label{fig:placement_p}
+\end{figure}
+}
 
 \textbf{Step 3: Fine-Grained Placement Generation.}
-After the assignment matrix $\mathbf{L}$ is determined, the algorithm converts the proportional assignments into a precise placement mapping $\mathcal{P}$. For each function $F_i$, it sequentially allocates contiguous percentile intervals from $[0, 1]$ to each node $N_j$ that hosts $F_i$, with the length of each interval equal to the assigned proportion $L[j,i]$. It directly yields the mapping $\mathcal{P}$: a request of function $F_i$ whose resource demand falls at percentile $p$ within $F_i$ historical distribution $D_i$ is then dispatched to the node $N_j$ whose allocated interval covers $p$.
+After the assignment matrix $\mathbf{L}$ is determined, the algorithm converts 
+the proportional assignments into a precise placement mapping $\mathcal{P}$ 
+(Line~24$\sim$29). This process is illustrated in Fig.~\ref{fig:placement_p}. 
+For each function $F_i$, the algorithm sequentially allocates contiguous percentile 
+intervals in $[0, 1]$ to each node $N_j$ that hosts $F_i$ (left side of the figure). 
+The length of the interval assigned to $N_j$ is exactly $L[j,i]$. This completes 
+the construction of $\mathcal{P}$, which is the algorithm’s final output. In 
+practice, to avoid resource fragmentation that could arise if certain nodes only 
+receive large tasks, the intervals are assigned to nodes in a randomized order 
+rather than a fixed sequence; the figure omits this step for simplicity.
 
-% 3. 任务分配方案 (Task Assignment)
-%   - 算法输出的“函数-节点”映射如何转化为实时调度决策。
+\parabf{Task Dispatching.} At runtime, the interval $[0, 1]$ is concretely mapped 
+to the resource‑demand percentiles of $F_i$’s invocations (right side of 
+Fig.~\ref{fig:placement_p}). Specifically, using $F_i$’s historical demand 
+distribution $D_i$, we pre‑compute the resource‑demand boundaries that correspond 
+to each percentile sub‑interval. When a new invocation arrives, its actual resource 
+demand (derived from input parameters and data size) is located on $D_i$ to obtain 
+its percentile $p$. The invocation is then dispatched to the node $N_j$ for which 
+$\mathcal{P}(F_i, p) = N_j$. For example, the newly arrived invocation marked in 
+the figure, whose demand percentile falls inside $[0.8, 1]$, would be dispatched 
+to Node C. Our experiments obtain accurate demand estimates from the benchmark’s 
+known input characteristics; the algorithm can be coupled with more sophisticated 
+prediction methods for further performance gains.
 
-% 4. 启发式算法流程 (Heuristic Algorithm)
-%   - 说明SwapCapacity方法
-%   - **收敛性**：解释为何在可控步长下，算法能在有限迭代内达到稳定状态。
+\begin{algorithm}
+\caption{SwapCapacity: Compute beneficial swap capacity}
+\label{alg:swap-capacity}
+\begin{algorithmic}[1]
+\Require $ $
+\Statex \begin{itemize}
+    \setlength{\itemindent}{.0em} % 控制缩进
+    \item Node $N_j$ with idle resource vector $\mathbf{C}_j^{\text{idle}}$
+    \item Target function $F_a$
+    \item Allocation matrix $\mathbf{L}$
+\end{itemize}
+\Ensure Swap capacity $\alpha^{\text{swap}}$, eviction list $\mathcal{E} = [ (F_k, \beta_k) ]$
+\State $\alpha^{\text{swap}} \gets 0$, $\mathcal{E} \gets [\,]$, $\{F_k\} \gets \{F_k | L[j, k] > 0\}$
+\If{$C_j^{\text{idle,cpu}} > 0$} \Comment Determine dominant idle resource
+    \State // Replace more memory‑intensive first
+    \State sort $\{F_k\}$ by $r_k$ \textbf{ascending} ; $\text{sign} \gets +1$
+\Else \Comment{ $C_j^{\text{idle,mem}} > 0$ }
+    \State // Replace more compute‑intensive first
+    \State sort $\{F_k\}$ by $r_k$ \textbf{descending}; $\text{sign} \gets -1$
+\EndIf
+\For{each $F_k$ in the sorted order}
+    \If{$\text{sign} \cdot (r_a - r_k) \leq 0$} 
+        \State \textbf{continue} \Comment{Swap would not improve $U(N_j)$}
+    \EndIf
+    \State Compute max $\beta_k$ s.t. evicting $\beta_k$ of $F_k$ respects $\mathbf{C}_j^{\text{idle}}$
+    \State $\beta_k \gets \min(\beta_k,\; L[j, k])$
+    \State $\gamma_k \gets \beta_k \cdot (\mathbf{V}_k \oslash \mathbf{V}_a)$ 
+        \Comment{$\gamma_k = \beta_k \cdot \min\left(\frac{V_k^{\text{cpu}}}{V_a^{\text{cpu}}}, \frac{V_k^{\text{mem}}}{V_a^{\text{mem}}}\right)$}
+    \If{$\alpha^{\text{swap}} + \gamma_k > R[a]$}
+        \State $\gamma_k \gets R[a] - \alpha^{\text{swap}}$; adjust $\beta_k$ proportionally
+    \EndIf
+    \State $\alpha^{\text{swap}} \gets \alpha^{\text{swap}} + \gamma_k$
+    \State $\mathcal{E} \gets \mathcal{E} \;\cup\; \{ (F_k, \beta_k) \}$
+    \If{$\alpha^{\text{swap}} \geq R[a]$} \textbf{break} \EndIf
+\EndFor
+\State \Return $(\alpha^{\text{swap}},\; \mathcal{E})$
+\end{algorithmic}
+\end{algorithm}
 
-% 5. 算法属性保证 (Algorithmic Guarantees)
-%   - **低开销**：“部分更新”机制如何运作（例如，仅重新计算受影响节点的分配，或定期而非每请求触发）。
+\parabf{Assignment via beneficial swaps.}
+The SwapCapacity subroutine (Algorithm~\ref{alg:swap-capacity}) determines, for 
+a given node $N_j$ and a target function $F_a$, the maximum additional fraction 
+$\alpha_j^{\text{swap}}$ of $F_a$ demand that can be hosted by beneficially evicting 
+already-placed functions. A swap is considered beneficial only if it increases 
+the overall node utilization $U(N_j)$. This requirement dictates that swaps must 
+consume the node’s dominant idle resource: if CPU is idle, $F_a$ must replace 
+more memory-intensive functions (with smaller demand ratio $r_k$); if memory is 
+idle, it must replace more compute-intensive ones (with larger $r_k$). The subroutine 
+takes as input the node idle resource vector $\mathbf{C}_j^{\text{idle}}$, the 
+target function $F_a$, and the current assignment matrix $\mathbf{L}$; it returns 
+the admissible swap capacity $\alpha^{\text{swap}}$ together with a list $\mathcal{E}$ 
+of evicted functions, each annotated with the evicted load fraction $\beta_k$.
+
+The subroutine proceeds in four logical steps. First, it identifies the dominant 
+idle resource—CPU or memory—since after using the node’s free capacity (line~11 
+of Algorithm 1), only one resource dimension may remain idle (lines 2$\sim$7). 
+This determines the order in which existing functions are examined: if CPU is 
+idle, functions are sorted by their resource-demand ratio $r_k$ in ascending 
+order (\emph{i.e.}, more memory‑intensive functions first); if memory is idle, 
+they are sorted in descending order (more compute‑intensive first). This ordering 
+ensures that the most beneficial candidates are tried first, because replacing 
+a function with a very complementary resource profile allows $F_a$ to consume 
+more of the idle resource.
+
+Second, for each candidate function $F_k$ in this sorted list, the algorithm 
+performs a benefit test (line~9). The condition $\operatorname{sign}\cdot(r_a-r_k) > 0$ 
+guarantees that swapping a fraction of $F_k$ for $F_a$ will actually increase 
+$U(N_j)$. Intuitively, if CPU is idle ($\operatorname{sign}=+1$), we must have 
+$r_a > r_k$, meaning $F_a$ is more compute‑intensive than $F_k$ and will better 
+utilize the spare CPU; the converse holds when memory is idle. Candidates that 
+fail this test are skipped.
+
+Third, for a candidate that passes the test, the algorithm computes how much of $F_k$ can be evicted ($\beta_k$) without exceeding the node’s idle resources, and limits $\beta_k$ by the amount currently assigned to $N_j$ ($L[j,k]$) (lines~11$\sim$12). It then translates this evicted capacity into an equivalent amount of $F_a$ that can be hosted using the freed resources. The translation uses the formula $\gamma_k = \beta_k \cdot \min\left(\frac{V_k^{\text{cpu}}}{V_a^{\text{cpu}}}, \frac{V_k^{\text{mem}}}{V_a^{\text{mem}}}\right)$(line~13), which ensures that neither CPU nor memory exceeds the vacated capacity—the $\min$ operation enforces the tighter of the two resource constraints.
+
+Finally, the algorithm accumulates the admissible fractions $\gamma_k$ until 
+either the pending demand $R[a]$ of $F_a$ is exhausted or no further beneficial 
+swaps can be found (lines~14$\sim$17). The accumulated total $\alpha^{\text{swap}}$ 
+and the corresponding eviction list $\mathcal{E}$ are returned to the main placement loop.
+
+\parabf{Low Overhead via Partial Updates.} To keep the scheduling overhead low, 
+the placement algorithm employs an incremental (partial) update mechanism. Rather 
+than recomputing the full placement from scratch for every scheduling window, the 
+system periodically (every 5 minutes in our implementation) monitors the latest 
+demand profiles $\langle r_i, \mathbf{V}_i, D_i \rangle$ of all functions. For 
+a function whose aggregate demand $\mathbf{V}_i$ has not increased and demand 
+distribution $D_i$ remains statistically stable, the algorithm preserves its 
+current placement. Only functions with significantly changed demand (increased 
+$\mathbf{V}_i$ or altered $D_i$) are fed into the complementary swarming algorithm 
+to update their assignments. This partial update drastically reduces the number 
+of functions that need to be re‑placed in each iteration. Furthermore, to prevent 
+the accumulation of sub‑optimality that may arise from multiple incremental 
+updates, the system performs a global re‑placement every 30 minutes, which 
+recomputes the assignment for all functions from a clean state, ensuring long‑term 
+placement quality.
 
 \subsection{Monotonic Scale-up Task Scheduling}
 \label{sec:design:scheduling}
