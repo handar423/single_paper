@@ -339,19 +339,147 @@ placement quality.
 \subsection{Monotonic Scale-up Task Scheduling}
 \label{sec:design:scheduling}
 
-% 1. 调度器目标与总览 (Scheduler Objective & Overview)
-%   - 重申目标：解决函数内需求波动，实现无重启细粒度资源调整。
-%   - 总览架构图：展示双队列、多沙箱、与K8s运行时交互的组件图。
+{
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.9\linewidth]{figures/design/scheduling.pdf}
+  \vspace{-10pt}
+  \caption{Monotonic acale-up task scheduling workflow.}
+  \vspace{-10pt}
+  \label{fig:scheduler-arch}
+\end{figure}
+}
 
-% 2. 调度器核心结构 (Core Scheduler Structure)
-%   - **双任务队列**：明确两个队列的作用（例如，Q1: 等待分配沙箱的任务；Q2: 已分配待执行的任务）。
-%   - **排序规则**：队列按预测资源需求单调递增排序。
-%   - **多沙箱均分优先级结构**：如何将不同函数的请求分配到不同沙箱，以及如何在沙箱间平衡负载。
+\label{subsec:scheduler-structure}
 
-% 3. 优先级设计 (Priority Design)
-%   - 定义优先级函数，综合考虑等待时间、冷启动开销、资源需求。
-%   - 解释如何通过“在优先级约束下策略性重排序”来延长队列，从而提升利用率和减少冷启动。
+The monotonic scale‑up scheduler runs on each worker node. Its primary objective 
+is to handle the intra‑function demand variability identified in 
+\S\ref{sec:background:demand-analysis} by leveraging in‑place vertical scaling, 
+thereby avoiding costly cold starts while maintaining high resource efficiency.
 
-% 4. 事件驱动调度逻辑 (Event-driven Scheduling Logic)
-%   - 列出关键事件：新请求到达、沙箱资源调整完成、沙箱空闲、资源回收触发。
-%   - 描述调度器对每个事件的反应逻辑（可配流程图或状态机）。
+\subsubsection{Scheduler Architecture}
+
+As illustrated in Fig.~\ref{fig:scheduler-arch}, the core scheduling structure 
+is organized per function. For each function $F_i$, the scheduler maintains two 
+monotonic task queues: a current queue and a backup queue. Tasks in both queues 
+are ordered by their predicted resource demand in increasing order. This monotonic 
+ordering is the key to enabling efficient in‑place scaling: when a sandbox processes 
+tasks sequentially from a single queue, its resource allocation can be increased 
+incrementally without~restarts.
+
+\parabf{Task‑insertion rule.} When a new invocation of $F_i$ arrives, its predicted 
+resource demand is compared with the demand of the head (smallest) task in the 
+current queue. If the new demand is smaller, the invocation is placed into the 
+backup queue; otherwise, it is inserted into the current queue (preserving the 
+monotonic order). The purpose of this rule is not merely to keep each queue sorted, 
+but to guarantee that a sandbox, while processing tasks from a single current 
+queue, encounters a resource demand sequence that is monotonically non‑decreasing. 
+This property is essential: if a sandbox were forced to run a larger task before 
+a smaller one, it would either have to start at the higher capacity (wasting 
+resources) or be restarted after a down‑scale (incurring cold‑start overhead). 
+The backup queue temporarily holds smaller tasks until the current queue is 
+fully processed, after which the roles of the two queues may swap.
+
+\parabf{Sandbox execution and priority‑based selection.} A function may have from 
+zero to multiple concurrent warm sandboxes, each dedicated to fetching tasks only 
+from that function’s current queue. The scheduler assigns a dynamic priority to 
+each function (detailed in \S\ref{subsec:priority-design}). At every scheduling 
+point—triggered by a new task arrival or a task completion—the scheduler selects 
+the function with the highest priority and attempts to dispatch the head task of 
+its current queue.
+
+\parabf{Resource‑assignment policy.} To execute the selected task, the scheduler 
+tries the following options in order, aiming to minimize overhead:
+
+\begin{enumerate}
+    \item \textbf{Reuse} an existing sandbox of the same function whose current 
+    resource allocation already meets or slightly exceeds the task’s demand, 
+    thereby avoiding any scaling~operation.
+    
+    \item \textbf{In‑place scaling} of a warm sandbox via restart‑free vertical 
+    scaling (Kubernetes Pod resize API) to accommodate the task, thus preserving 
+    warm state.
+
+    \item \textbf{Launch a new sandbox} (cold start) if no suitable warm sandbox 
+    is available.
+\end{enumerate}
+
+If the node lacks sufficient idle resources for options 2) or 3), the scheduler 
+evaluates eviction. It selects candidate sandboxes according to a per‑sandbox 
+eviction priority computed as:
+\[
+\text{Prio}_{\text{sandbox}} = \frac{\text{Prio}_{\text{function}}}{N_{\text{sandboxes}}},
+\]
+where \(N_{\text{sandboxes}}\) is the number of active sandboxes belonging to 
+the same function. Among sandboxes of the same function, those with larger resource 
+footprints are evicted first. This scheme encourages load spreading (by penalizing 
+functions that already hold many sandboxes) and promotes fair resource sharing. 
+Eviction is performed only if it can actually release enough resources to execute 
+the pending task; otherwise, the scheduler leaves the system unchanged and waits 
+for the next scheduling event.
+
+\subsubsection{Priority Design}
+\label{subsec:priority-design}
+
+The scheduler assigns a dynamic priority to each function $F_i$ to balance three 
+objectives: minimizing cold‑start overhead, preventing task starvation, and 
+maximizing the utility of in‑place scaling. The priority is computed as a 
+weighted sum of three factors derived from the state of $F_i$’s~queues:
+\[
+\text{Priority}(F_i) = \omega_1 \cdot \text{factor}_1 \;+\; \omega_2 \cdot \text{factor}_2 \;+\; \omega_3 \cdot \text{factor}_3,
+\]
+
+where the weights $\omega_1, \omega_2 > 0$ and $\omega_3 < 0$ are tunable 
+parameters (set to $0.3$, $1.1$ and $-0.8$ respectively in our implementation). 
+The three factors are defined as follows:
+
+\begin{itemize}
+    \item \textbf{Cold‑start cost factor} ($\text{factor}_1$).  
+    Let $t_{\text{last}}$ be the task with the largest predicted resource demand 
+    in $F_i$’s current queue, and let $C_{\text{cold}}(F_i)$ denote the estimated 
+    cold‑start cost of $F_i$ (\emph{i.e.}, the time overhead of launching a new 
+    sandbox). Then
+    \[
+    \text{factor}_1 = \max\!\left(\frac{t_{\text{last}}^{\text{mem}}}{C_j^{\text{mem}}},\; \frac{t_{\text{last}}^{\text{cpu}}}{C_j^{\text{cpu}}}\right) \cdot C_{\text{cold}}(F_i),
+    \]
+    where $C_j^{\text{mem}}$ and $C_j^{\text{cpu}}$ are the memory and CPU 
+    capacities of the worker node $N_j$ on which the scheduler is running. This 
+    factor increases when the largest pending task occupies a large fraction of 
+    the node’s resources and the function itself is expensive to cold‑start. It 
+    encourages the scheduler to keep executing $F_i$’s tasks consecutively, 
+    thereby raising the chance of reusing a warm sandbox.
+
+    \item \textbf{Starvation‑avoidance factor} ($\text{factor}_2$).  
+    Let $W_{\max}$ be the longest waiting time among all pending tasks of $F_i$,
+    and let $\overline{T}(F_i)$ be the average execution duration of $F_i$ tasks. 
+    The starvation factor is zero if no task has been waiting excessively; otherwise 
+    it grows with the cumulative waiting time and the total work left in the~queue:
+    \[
+    \text{factor}_2 = 
+    \begin{cases}
+    0, & \text{if } W_{\max} < 3 \cdot \overline{T}(F_i),\\[4pt]
+    \overline{T}(F_i) \cdot |Q_i| + W_{\max}, & \text{otherwise}.
+    \end{cases}
+    \]
+    Here $|Q_i|$ is the total number of tasks in $F_i$’s current queue. This 
+    mechanism ensures that a function whose tasks have been waiting too long 
+    receives a priority boost, preventing indefinite starvation.
+
+    \item \textbf{Scaling‑efficiency factor} ($\text{factor}_3$).  
+    Let $t_{\text{first}}$ and $t_{\text{last}}$ be the tasks with the smallest 
+    and largest predicted resource demands in $F_i$ current queue, respectively. 
+    Under the assumption that all invocations of the same function share the same 
+    CPU‑to‑memory ratio (see \S\ref{subsec:modeling}), the ratio can be computed 
+    using either dimension; we use memory for concreteness:
+    \[
+    \text{factor}_3 = \frac{t_{\text{first}}^{\text{mem}}}{t_{\text{last}}^{\text{mem}}}.
+    \]
+    A large ratio (close to $1$) indicates that the queue’s resource‑demand range 
+    is narrow; consequently, a sandbox that starts with $t_{\text{first}}$ will 
+    require little additional scaling to process the remaining tasks. A small 
+    ratio (\emph{i.e.}, a wide demand spread) implies that abandoning the current 
+    queue would incur less “waste” of scaling effort, which is reflected by the 
+    negative weight $\omega_3$.
+\end{itemize}
+
+Finally, to further promote sandbox reuse, the priority of any function that already possesses one or more warm sandboxes is \textbf{doubled}. The combined priority is recomputed at every scheduling event, enabling the scheduler to adapt dynamically to changing workload patterns.
