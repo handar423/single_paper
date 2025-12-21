@@ -14,7 +14,7 @@ In practice, resource management in serverless platforms encompasses two primary
 \parabf{Per-instance resource allocation.}
 % 1) 静态的运行时资源配置：介绍 lambda 支持指定固定资源规格，及其对延迟和开销的影响，所以选取一个所有请求都不违背qos的配置
 Existing serverless computing systems from both industry~\cite{Doc:Azure_Functions_Hosting,
-Doc:GCP_CloudRun_Mem, aws_lambda} and academia~\cite{ASPLOS21:FaasCache, shahrad2020serverless, wang2018peeking, pu2019shuffling}
+Doc:GCP_CloudRun_Mem, aws_lambda} and academia~\cite{FaaSCache, shahrad2020serverless, wang2018peeking, pu2019shuffling}
 allocate a uniform amount of resources for all instances of a given function. In AWS Lambda, a developer specifies a memory size (e.g., 128 MB--10,240 MB), from which the platform derives proportional vCPU and network bandwidth shares~\cite{aws_lambda}. Developers may also set ephemeral storage per instance (default 512 MB, configurable up to a few gigabytes). These limits remain fixed throughout the sandbox's lifetime. Similar static per-instance specifications are used by Azure Functions~\cite{Doc:Azure_Functions_Hosting} and Google Cloud Run~\cite{Doc:GCP_CloudRun_Mem}. This approach presumes uniform resource demand across function invocations. A user typically selects the smallest configuration that satisfies the function's QoS (e.g., latency SLO) to minimize costs. \todo{add some citations}
 
 %  已有工作: 运行时资源配置：根据 profile 进行 static 资源分配，在延迟和开销间做合理tradeoff，引用一些相关工作，如 

@@ -3,7 +3,7 @@
 
 In this section, we first evaluate the overall performance of \sysname against 
 state-of-the-art systems—Palette~\cite{abdi2023palette} and 
-FaaSCache~\cite{ASPLOS21:FaaSCache}—in \S\ref{sec:experiments_comparsion}. Next, 
+FaaSCache~\cite{tFaaSCache}—in \S\ref{sec:experiments_comparsion}. Next, 
 we conduct an in-depth analysis of the effectiveness of the key techniques 
 employed in \sysname in \S\ref{sec:experiments_technique}. Finally, we investigate 
 the scalability of \sysname in large-scale cluster environments in \S\ref{sec:experiments_overhead}.
@@ -15,7 +15,7 @@ the scalability of \sysname in large-scale cluster environments in \S\ref{sec:ex
 We selected ten benchmark applications from a recent open-source serverless 
 benchmarking suite~\cite{copik2021sebs} to evaluate the performance of \sysname 
 across diverse workloads. Table\ref{tab:setup} summarizes the basic distribution 
-of these benchmarks (see~\cite{xxx} for full details). The selected benchmarks 
+of these benchmarks (see~\cite{benchmark_10} for full details). The selected benchmarks 
 span multiple categories—including Web Apps, Multimedia, Utilities, Inference, 
 and Scientific Computing—and exhibit substantial variation in resource requirements. 
 In our testdeb, the average memory consumption of these benchmarks ranges from 
@@ -95,7 +95,7 @@ a standard deviation of 0.85.
 
 \parabf{Baseline.} We evaluate \sysname against two state-of-the-art resource 
 management approaches for serverless platforms: Palette~\cite{abdi2023palette} 
-and FaaSCache~\cite{ASPLOS21:FaaSCache}, which optimize cluster efficiency from 
+and FaaSCache~\cite{tFaaSCache}, which optimize cluster efficiency from 
 complementary perspectives. \textbf{Palette} enhances spatial locality by allowing 
 users to assign color labels to functions and co-locating those with the same color 
 on the same server. In our experiments, each benchmark is assigned a unique color. 
@@ -373,7 +373,7 @@ When integrated with the complementary swarming instance placement strategy
 (as in \sysname), each server handles a limited, resource-complementary set of 
 functions. This increases the likelihood that tasks with high resource demands 
 are selected for instance setup and execution, raising the execution priority for 
-subsequent tasks from the same function (see Section~\ref{sec:scheduling}). In 
+subsequent tasks from the same function (see Section~\ref{subsec:priority-design}). In 
 contrast, without effective load partitioning, a wider variety of instances compete 
 for server resources. In this scenario, resource-intensive instances are served 
 mainly through starvation-avoidance mechanisms, receiving only limited execution 
