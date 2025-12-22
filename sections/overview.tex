@@ -8,16 +8,16 @@
   \centering
   \includegraphics[width=\linewidth]{figures/overview.pdf}
   \vspace{-15pt}
-  \caption{\sysname overview.}
+  \caption{\sysname overview. \junyi{put multiple users in the figure}}
   \vspace{-15pt}
   \label{fig:overview}
 \end{figure}
 }
 
 Figure~\ref{fig:overview} illustrates the overall architecture of \sysname. The
-scheduling framework of \sysname operates at two levels: cluster-wide task 
-dispatching and per-server scheduling. At the cluster level, incoming user requests 
-are first directed to a task dispatcher, which performs initial traffic accounting. 
+scheduling framework of \sysname operates at two levels: inter-node task 
+dispatching and intra-node task scheduling. At the cluster level, incoming user requests 
+are first directed to a task dispatcher \junyi{should probably unify task and request}, which performs initial traffic accounting. 
 The instance placement manager continuously collects traffic statistics, function 
 metadata, and task performance metrics, periodically executing the instance 
 placement algorithm. The resulting placement plan is fed back to the task dispatcher 

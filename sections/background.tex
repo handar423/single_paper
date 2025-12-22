@@ -19,7 +19,7 @@ allocate a uniform amount of resources for all instances of a given function. In
 
 %  已有工作: 运行时资源配置：根据 profile 进行 static 资源分配，在延迟和开销间做合理tradeoff，引用一些相关工作，如 
 Optimizations on the static per-instance resource allocation focus on
-profile-guided parameter tuning~\cite{aws_lambda_power_tuning,ASPLOS21:FaasCache, shahrad2020serverless, wang2018peeking, pu2019shuffling, zhang2024jolteon, JinZXZHLJ23} \todo{jolteon and ditto?}\yunshan{Done}
+profile-guided parameter tuning~\cite{aws_lambda_power_tuning,FaaSCache, shahrad2020serverless, wang2018peeking, pu2019shuffling, zhang2024jolteon, JinZXZHLJ23}
 By profiling functions across discrete resource configurations, this method derives latency–cost curves to identify the cheapest configuration satisfying specific SLOs. An automated tool can then use these profiles to minimize costs under QoS constraints by exploiting per-function heterogeneity.
 
 \parabf{Instance scaling and placement.}
@@ -68,7 +68,7 @@ Cache-aware strategies reduce cold start overheads by enabling instances to shar
 
 % 1) 函数级别需求分布
 \paraf{Resource Usage Variation Across Functions.}
-The resource demands of serverless functions are highly heterogeneous. We quantify this heterogeneity by analyzing the execution traces of 162 real-world functions from the open-source Huawei dataset~\cite{huawei_dataset}, calculating the average CPU-to-memory ratio (core/GB) for each. Figure~\ref{fig:cpu_mem_ratio_hist} presents the distribution of these ratios across all functions.\footnote{The statistical results shown are from [Request Table Module, Region 4] part in dataset~\cite{huawei_dataset}. We observed similar distributions in other parts of the dataset. \todo{what does this mean? confusing} \yunshan{This?}} The distribution is highly dispersed, with ratios ranging from 0.09 to 9.20 and a high CV of 62.43\%, indicating that some functions are intensely compute-intensive while others are predominantly memory-intensive. This substantial variation in intrinsic resource profiles implies that a scheduler unaware of such differences is prone to creating resource fragmentation, where one resource type is exhausted on a node while another remains underutilized.
+The resource demands of serverless functions are highly heterogeneous. We quantify this heterogeneity by analyzing the execution traces of 162 real-world functions from the open-source Huawei dataset~\cite{huawei_dataset}, calculating the average CPU-to-memory ratio (core/GB) for each. Figure~\ref{fig:cpu_mem_ratio_hist} presents the distribution of these ratios across all functions.\footnote{The statistical results shown are from [Request Table Module, Region 4] part in dataset~\cite{huawei_dataset}. We observed similar distributions across different parts of the dataset.} The distribution is highly dispersed, with ratios ranging from 0.09 to 9.20 and a high CV of 62.43\%, indicating that some functions are intensely compute-intensive while others are predominantly memory-intensive. This substantial variation in intrinsic resource profiles implies that a scheduler unaware of such differences is prone to creating resource fragmentation, where one resource type is exhausted on a node while another remains underutilized.
 
 \begin{figure}[t]
     \centering
@@ -88,13 +88,13 @@ The resource demands of serverless functions are highly heterogeneous. We quanti
 
 % 2) 调用级别资源占用
 \paraf{Resource Usage Variation Across Invocations.}
-Resource demand also exhibits significant variation across different invocations of the same function. We compute  the CV for CPU usage of each function across its invocations. The distribution of these CV values is presented in Figure~\ref{fig:usage_variation}. Our analysis reveals that for a substantial portion (54\%) of functions, the CV exceeds 50\%, indicating that these functions have a highly dispersed resource demand profile across invocations. A further 26\% of functions exhibit a moderate degree of variation, with CV values between 15\% and 50\%. Only 20\% of functions demonstrate relatively stable resource requirements (CV < 15\%). \junyi{is this classification standard?} \todo{feasible to characterize discrete using CV~\cite{ShahradFGCBCLTR20}, but lack clear classification standard, revised to directly uses CV numerical value.}
+Resource demand also exhibits significant variation across different invocations of the same function. We compute  the CV for CPU usage of each function across its invocations. The distribution of these CV values is presented in Figure~\ref{fig:usage_variation}. Our analysis reveals that for a substantial portion (54\%) of functions, the CV exceeds 50\%, indicating that these functions have a highly dispersed resource demand profile across invocations. A further 26\% of functions exhibit a moderate degree of variation, with CV values between 15\% and 50\%. Only 20\% of functions demonstrate relatively stable resource requirements (CV $<$ 15\%). \junyi{is this classification standard?} \todo{feasible to characterize discrete using CV~\cite{ShahradFGCBCLTR20}, but lack clear classification standard, revised to directly uses CV numerical value.}
 
 To provide deeper insight into these statistical patterns, Figure~\ref{fig:usage_patterns} 
 illustrates four representative resource consumption distributions observed in 
 the trace: (a) a quasi-normal distribution (where the truncated right tail is 
 attributed to the imposed per-instance resource limit); (b) a long-tailed 
-distribution; \junyi{does not look like a standard long-tail distribution. can we have a standard one?}\yunshan{Found} (c) a concentrated distribution; and (d) certain atypical cases 
+distribution; (c) a concentrated distribution; and (d) certain atypical cases 
 that do not conform to standard distributions, potentially influenced by specific 
 input parameter distributions or external factors. This intra-function variability 
 necessitates a scheduling mechanism that can adapt to dynamic, request-level 
