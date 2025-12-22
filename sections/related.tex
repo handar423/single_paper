@@ -27,7 +27,7 @@ Recent research in serverless computing has delved into more effective managemen
 encompassing cache policies, autoscaling, and placement strategies.
 The decision regarding how many function instances to keep alive typically hinges on workload predictions.
 Function instances may remain active for a designated time window after execution to manage subsequent invocations
-without incurring cold starts~\cite{tFaaSCache} and can be prewarmed~\cite{ORION_MahgoubYSECB22}
+without incurring cold starts~\cite{FaaSCache} and can be prewarmed~\cite{ORION_MahgoubYSECB22}
 according to anticipated demand patterns to minimize startup latency.
 Moreover, the number of function instances can be dynamically adjusted based on real-time metrics and usage patterns~\cite{ORION_MahgoubYSECB22, aws_scaling_window, aws_scaling_eq, knative_scaling, AQUATOPE_ZhouZD23}.
 These techniques focus on optimizing the count of function instances with a static resource allocation.
