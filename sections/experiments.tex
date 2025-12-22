@@ -3,7 +3,7 @@
 
 In this section, we first evaluate the overall performance of \sysname against 
 state-of-the-art systems—Palette~\cite{abdi2023palette} and 
-FaaSCache~\cite{tFaaSCache}—in \S\ref{sec:experiments_comparsion}. Next, 
+FaaSCache~\cite{FaaSCache}—in \S\ref{sec:experiments_comparsion}. Next, 
 we conduct an in-depth analysis of the effectiveness of the key techniques 
 employed in \sysname in \S\ref{sec:experiments_technique}. Finally, we investigate 
 the scalability of \sysname in large-scale cluster environments in \S\ref{sec:experiments_overhead}.
@@ -13,28 +13,28 @@ the scalability of \sysname in large-scale cluster environments in \S\ref{sec:ex
 
 \parabf{Benchmarks.}
 We selected ten benchmark applications from a recent open-source serverless 
-benchmarking suite~\cite{copik2021sebs} to evaluate the performance of \sysname 
+benchmarking suite~\cite{copik2021sebs, benchmark_10} to evaluate the performance of \sysname 
 across diverse workloads. Table\ref{tab:setup} summarizes the basic distribution 
-of these benchmarks (see~\cite{benchmark_10} for full details). The selected benchmarks 
-span multiple categories—including Web Apps, Multimedia, Utilities, Inference, 
+of these benchmarks. The selected benchmarks 
+span multiple categories—including Web Apps, Multimedia, Utilities, Machine Learning, 
 and Scientific Computing—and exhibit substantial variation in resource requirements. 
-In our testdeb, the average memory consumption of these benchmarks ranges from 
+In our testdeb \junyi{typo?}, the average memory consumption of these benchmarks ranges from 
 500 MB to 4 GB, while CPU usage varies between 0.5 and 4 cores. The memory-to-CPU 
 ratio (GB per core) also differs significantly, spanning from 0.5 to 4. Moreover, 
-the average execution times range from 0.15 to 21.5 seconds for these applications. 
+the average execution times range from 0.15 to 21.5 seconds for these applications. \junyi{can we include these nubmers for each workload in the table?}
 This diversity in workload characteristics enables a comprehensive performance 
 evaluation of \sysname under realistic conditions.
 
 \begin{table}[ht]
     \vspace{-10pt}
-    \caption{Performance comparison under multiple workflows.\label{tab:setup}}
+    \caption{Performance comparison under multiple workflows.\label{tab:setup} \junyi{name of this table is not very accurate}}
     % \fontsize{20pt}{30pt}\selectfont
     \begin{tabularx}{0.47\textwidth}{ 
         >{\raggedright\arraybackslash}X  % 1. 第一列左对齐
         >{\centering\arraybackslash}X    % 2. 其他列居中...
         >{\centering\arraybackslash}p{5cm}} % 3. 第四列指定为更宽的2cm，并居中
         \toprule
-        \textbf{Benchmark} & \textbf{Type} & \textbf{Distribution} \\
+        \textbf{Workload} & \textbf{Type} & \textbf{Distribution} \\
         \hline 
         \hline 
         \raisebox{-5pt}{graph-bfs} & \raisebox{-5pt}{Scientific} & Breadth-first search traversal implemented using igraph. \\
@@ -51,7 +51,7 @@ evaluation of \sysname under realistic conditions.
         \hline
         \raisebox{-5pt}{compression} & \raisebox{-5pt}{Utilities} & Compressing multiple files into a ZIP archive for download. \\
         \hline
-        image-recognition & \raisebox{-5pt}{Inference} & Performing image classification using ResNet and PyTorch. \\
+        image-recognition & \raisebox{-5pt}{ML} & Performing image classification using ResNet and PyTorch. \\
         \hline
         thumbnailer & Multimedia & Creating thumbnail images from input pictures. \\
         \hline
@@ -60,7 +60,7 @@ evaluation of \sysname under realistic conditions.
     \end{tabularx}
 \end{table}
 
-\parabf{Workload generation.} We generate simulated user traffic based on the 
+\parabf{Workload generation.} We generate user traffic based on the 
 Azure Functions Dataset~\cite{ShahradFGCBCLTR20}. For each benchmark, a 
 corresponding function invocation trace is randomly sampled from the top 20\% 
 most frequently invoked functions—a subset reported to account for the majority 
@@ -72,10 +72,10 @@ frequencies across the ten benchmarks are adjusted to be nearly identical (with 
 relative difference of less than 2\%). Since the original trace data is recorded 
 at minute-level granularity, we model intra-minute request arrivals using a 
 Poisson process. In alignment with common industrial practice~\cite{aws_scaling_window, 
-knative_scaling_window}, the scaling interval is set to 1 minute.
+knative_scaling_window}, the scaling interval is set to 1 minute. \junyi{is the generation method standard? If so, can we add some citations: we follow the same methodology as xxxx to generate the workload.}
 
 To simulate the real-world characteristic where the resource demand of a serverless 
-function follows a normal distribution across multiple executions, we first 
+function follows a normal distribution across multiple executions \junyi{We said there are 4 different distributions earlier in the paper. Isn't it reasonable to have all of them?}, we first 
 randomly select ten functions from the dataset and compute the variance of their 
 resource usage after Gaussian fitting. We then randomly adjust the input data 
 size and parameters of each benchmark so that the actual resource requirements 
@@ -84,8 +84,8 @@ of memory resource demands, we assume a fixed ratio between CPU and memory requi
 for each benchmark. Accordingly, CPU allocation is determined proportionally 
 based on the memory~demand.
 
-\parabf{Cluster configuration.} Our experiments are conducted on CloudLab using 
-a cluster consisting of 9 c6620 instances (56 cores, 2 * Intel Xeon Gold 5512U 
+\parabf{Cluster configuration.} Our experiments are conducted on CloudLab \todo{cite} using 
+a cluster consisting of 9 c6620 instances (56 cores in total, 2$\times$ Intel Xeon Gold 5512U 
 @ 2.1GHz, 128GB memory). Eight of them serve as working servers and one as the 
 scheduler and user request generator. To simulate the varied resource availability 
 conditions in production clusters, our evaluation allocates only a subset of total 
@@ -93,13 +93,13 @@ resources on each worker server. Unless otherwise specified, the available resou
 proportions across different servers are sampled from a normal distribution with 
 a standard deviation of 0.85.
 
-\parabf{Baseline.} We evaluate \sysname against two state-of-the-art resource 
+\parabf{Baselines.} We evaluate \sysname against two state-of-the-art resource 
 management approaches for serverless platforms: Palette~\cite{abdi2023palette} 
-and FaaSCache~\cite{tFaaSCache}, which optimize cluster efficiency from 
-complementary perspectives. \textbf{Palette} enhances spatial locality by allowing 
+and FaaSCache~\cite{FaaSCache}, which optimize cluster efficiency from 
+complementary perspectives. Palette enhances spatial locality by allowing 
 users to assign color labels to functions and co-locating those with the same color 
 on the same server. In our experiments, each benchmark is assigned a unique color. 
-Inspired by caching systems, \textbf{FaaSCache} employs a Greedy-Dual keep-alive 
+Inspired by caching systems, FaaSCache employs a Greedy-Dual keep-alive 
 strategy that assigns a priority to each kept-alive instance and evicts low-priority 
 instances first under resource pressure. To ensure a fair comparison and minimize 
 the impact of engineering artifacts, we reimplement both baselines in our prototype 
@@ -243,7 +243,7 @@ rate, which in turn improves overall~efficiency.
     \hfil
     \subfloat[]{\includegraphics[width=0.32\linewidth]{figures/Eval/skew_Task throughput.pdf}%
     \label{fig:eval_workload_throughput}}
-    \caption{Performance comparison under different workload distributions. (a) CPU Utilization. (b) Memory Utilization. (c) Task throughput.}
+    \caption{Performance comparison under different workload distributions. (a) CPU Utilization. (b) Memory Utilization. (c) Task throughput. \junyi{looks weird. either remove the blank between uniform and zipf or add another set of bars (zipf of a different skewness)}}
     \vspace{-15pt}
 \label{fig:eval_workload}
 \end{figure*}
