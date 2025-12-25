@@ -14,11 +14,11 @@ the scalability of \sysname in large-scale cluster environments in \S\ref{sec:ex
 \parabf{Benchmarks.}
 We selected ten benchmark applications from a recent open-source serverless 
 benchmarking suite~\cite{copik2021sebs, benchmark_10} to evaluate the performance of \sysname 
-across diverse workloads. Table\ref{tab:setup} summarizes the basic distribution 
+across diverse workloads. Table~\ref{tab:setup} summarizes the basic distribution 
 of these benchmarks. The selected benchmarks 
 span multiple categories—including Web Apps, Multimedia, Utilities, Machine Learning, 
 and Scientific Computing—and exhibit substantial variation in resource requirements. 
-In our testdeb \junyi{typo?}, the average memory consumption of these benchmarks ranges from 
+In our testbed, the average memory consumption of these benchmarks ranges from 
 500 MB to 4 GB, while CPU usage varies between 0.5 and 4 cores. The memory-to-CPU 
 ratio (GB per core) also differs significantly, spanning from 0.5 to 4. Moreover, 
 the average execution times range from 0.15 to 21.5 seconds for these applications. \junyi{can we include these nubmers for each workload in the table?}
@@ -27,7 +27,7 @@ evaluation of \sysname under realistic conditions.
 
 \begin{table}[ht]
     \vspace{-10pt}
-    \caption{Performance comparison under multiple workflows.\label{tab:setup} \junyi{name of this table is not very accurate}}
+    \caption{Benchmarks distribution.\label{tab:setup}}
     % \fontsize{20pt}{30pt}\selectfont
     \begin{tabularx}{0.47\textwidth}{ 
         >{\raggedright\arraybackslash}X  % 1. 第一列左对齐
@@ -84,7 +84,7 @@ of memory resource demands, we assume a fixed ratio between CPU and memory requi
 for each benchmark. Accordingly, CPU allocation is determined proportionally 
 based on the memory~demand.
 
-\parabf{Cluster configuration.} Our experiments are conducted on CloudLab \todo{cite} using 
+\parabf{Cluster configuration.} Our experiments are conducted on CloudLab~\cite{cloudlab} using 
 a cluster consisting of 9 c6620 instances (56 cores in total, 2$\times$ Intel Xeon Gold 5512U 
 @ 2.1GHz, 128GB memory). Eight of them serve as working servers and one as the 
 scheduler and user request generator. To simulate the varied resource availability 
@@ -146,14 +146,14 @@ fraction of available resources per server follows a Zipf distribution parameter
 with $\alpha = 0.8$ across $n = 8$ resource tiers. 
 
 Across all resource distribution patterns, \sysname consistently improves both 
-CPU and memory utilization, achieving relative improvements of 43.61\%$\sim$55.53\% \junyi{use -- instead of $\sim$}
-and 41.41\%$\sim$67.01\% over the baselines, respectively. Furthermore, \sysname 
+CPU and memory utilization, achieving relative improvements of 43.61\%--55.53\%
+and 41.41\%--67.01\% over the baselines, respectively. Furthermore, \sysname 
 demonstrates performance gains in task throughput, with improvements ranging from 
 51.52\% to 103.71\%.
 
 To address the potential concern of task starvation, we examine the impact on 
 request-level performance. As shown in Table~\ref{tab:latency}, \sysname reduces 
-the overall 95th percentile latency by 30.63\%$\sim$42.42\% compared to the baselines. 
+the overall 95th percentile latency by 30.63\%--42.42\% compared to the baselines. 
 This result indicates that the efficiency gains of \sysname are not achieved by 
 systematically delaying particular requests or task types. Instead, the improvement 
 in resource utilization and throughput is achieved alongside enhanced and more 
@@ -221,10 +221,10 @@ Beyond the default configuration of 10 benchmarks, we provide two additional sce
 
 As shown in Figure~\ref{fig:eval_function}, the performance advantage of \sysname 
 over the baselines grows as the number of benchmarks increases from 5 to 20. 
-Specifically, the improvement in CPU utilization rises from 17.40\%$\sim$16.90\% 
-to 44.89\%$\sim$44.06\%, memory utilization gains increase from 41.81\%$\sim$43.26\% 
-to 55.42\%$\sim$57.37\%, and task throughput improvements expand from 45.22\%$\sim$51.06\% 
-to 75.45\%$\sim$78.98\%.
+Specifically, the improvement in CPU utilization rises from 17.40\%--16.90\% 
+to 44.89\%--44.06\%, memory utilization gains increase from 41.81\%--43.26\% 
+to 55.42\%--57.37\%, and task throughput improvements expand from 45.22\%--51.06\% 
+to 75.45\%--78.98\%.
 
 This scaling trend can be attributed to the complementary swarming instance placement. With 
 fewer benchmarks, each server already operates on a limited set of functions, 
@@ -243,7 +243,7 @@ rate, which in turn improves overall~efficiency.
     \hfil
     \subfloat[]{\includegraphics[width=0.32\linewidth]{figures/Eval/skew_Task throughput.pdf}%
     \label{fig:eval_workload_throughput}}
-    \caption{Performance comparison under different workload distributions. (a) CPU Utilization. (b) Memory Utilization. (c) Task throughput. \junyi{looks weird. either remove the blank between uniform and zipf or add another set of bars (zipf of a different skewness)}}
+    \caption{Performance comparison under different workload distributions. (a) CPU Utilization. (b) Memory Utilization. (c) Task throughput.}
     \vspace{-15pt}
 \label{fig:eval_workload}
 \end{figure*}
@@ -263,8 +263,8 @@ of all invocations.
 It can be observed from Figure~\ref{fig:eval_workload} that, compared to the default 
 uniform distribution, the optimization margin of \sysname under the Zipf workload 
 distribution is relatively smaller. Under the Zipf distribution, \sysname achieves 
-an increase in CPU utilization of 23.20\%$\sim$23.58\%, memory utilization of 
-27.04\%$\sim$28.50\%, and task throughput of 29.20\%$\sim$31.34\% over the baselines.
+an increase in CPU utilization of 23.20\%--23.58\%, memory utilization of 
+27.04\%--28.50\%, and task throughput of 29.20\%--31.34\% over the~baselines.
 
 \looseness=-1
 This result stems from our experimental configuration: the Zipf distribution 
@@ -274,7 +274,7 @@ contrast, while the real-world workload distribution also exhibits skew, it
 involves a larger number of high-load functions competing for server resources 
 simultaneously. This competition creates more optimization potential for the 
 \sysname strategy. Moreover, even with only two high-load functions, \sysname 
-still achieves around 20\%$\sim$30\% higher resource utilization and task throughput 
+still achieves around 20\%--30\% higher resource utilization and task throughput 
 than the baselines. This gain is primarily because the monotonic scale-up 
 task scheduling policy reduces both instance resource over-provisioning and 
 cold-start frequency through task reordering, thereby enhancing overall 
@@ -296,7 +296,7 @@ resource~efficiency.
 performance advantage, Figure~\ref{fig:eval_detail} provides a detailed 
 illustration of the average resource consumption of \sysname and the baselines 
 during task processing. We categorize CPU and memory resources into the following 
-four types: 
+four~types: 
 
 \begin{itemize}
     \item \textbf{Task Execution}: resources allocated for processing tasks;
@@ -306,9 +306,9 @@ four types:
 \end{itemize}
 
 Taking CPU utilization as an example, compared to the baselines, \sysname increases 
-the resource share for Task Execution by 45.47\%$\sim$43.61\%, for Standby Instance 
-by 110.87\%$\sim$125.58\%, and for Idle Resource by 43.59\%$\sim$47.37\%, while 
-it reduces the share for Cold Start by 83.65\%$\sim$83.56\%. A similar trend is 
+the resource share for Task Execution by 45.47\%--43.61\%, for Standby Instance 
+by 110.87\%--125.58\%, and for Idle Resource by 43.59\%--47.37\%, while 
+it reduces the share for Cold Start by 83.65\%--83.56\%. A similar trend is 
 observed for memory utilization.
 
 The resource utilization advantage of \sysname stems from the reduction in cold 
@@ -353,8 +353,8 @@ simplified versions. We also provide the evaluation results of the baselines for
 reference.
 
 As shown, the performance of the Placement* version lies between the baselines 
-and \sysname. Compared to the baselines, it achieves improvements of 20.07\%$\sim$21.63\%, 
-16.90\%$\sim$17.23\%, and 17.31\%$\sim$15.74\% in CPU utilization, memory utilization, 
+and \sysname. Compared to the baselines, it achieves improvements of 20.07\%--21.63\%, 
+16.90\%--17.23\%, and 17.31\%--15.74\% in CPU utilization, memory utilization, 
 and task throughput, respectively. However, it still falls short of \sysname by 
 16.39\%, 17.33\%, and 23.62\% in the metrics. These results demonstrate that the 
 complementary swarming instance placement strategy alone can effectively enhance 
@@ -408,7 +408,7 @@ In the larger-scale cluster experiment, we increased the number of worker nodes
 to 16 and proportionally scaled the request invocation frequency, while keeping 
 other conditions constant. Figure~\ref{fig:eval_big} shows the performance comparison 
 among \sysname and the baselines. Compared to the baselines, \sysname improves 
-CPU utilization by 31.80\%$\sim$61.75\%, memory utilization by 41.95\%$\sim$53.82\%, 
+CPU utilization by 31.80\%--61.75\%, memory utilization by 41.95\%--53.82\%, 
 and task throughput by 40.24\%--110.75\%. These results align with those observed 
 in the smaller cluster, demonstrating that \sysname maintains its performance 
 advantage stably at scale.

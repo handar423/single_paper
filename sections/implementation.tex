@@ -2,7 +2,7 @@
 \label{sec:implementation}
 
 We implement a prototype of \sysname with $\sim$3100 LOC in Python, with 
-Kubernetes~\cite{k8s} for instance management, Minio~\cite{redis} \junyi{MinIO=redis?} for function 
+Kubernetes~\cite{k8s} for instance management, Minio~\cite{MinIO} for function 
 data management, and SciPy~\cite{scipy} for workload prediction.
 
 \parabf{Instance manager.} We use containers as the serverless function instance 
@@ -21,7 +21,7 @@ system.
 
 \parabf{Scheduler.} The scheduler in the prototype consists of four modules. 
 i) The cluster-level instance placement manager runs periodically (currently 
-every 5 minutes), executes the complementary swarming placement algorithm, 
+every minute), executes the complementary swarming placement algorithm, 
 and passes the resulting to the task dispatcher process. ii) The cluster 
 task dispatcher, operating in a separate process, assigns each incoming task to 
 a worker node according to the placement plan. iii) The worker-level task 
@@ -30,4 +30,4 @@ task to execute based on the monotonic scale-up task scheduling policy.
 iv) The system monitor collects real-time resource usage, records per-function 
 metrics (cold-start time, execution duration, resource demand distribution), and 
 generates load forecasts. For prediction, we currently employ a basic FFT-based 
-method implemented with the Python SciPy library. \junyi{unify 1) 2) 3) and i) ii) iii)}
+method implemented with the Python SciPy library.

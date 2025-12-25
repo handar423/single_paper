@@ -3,11 +3,11 @@
 
 Serverless computing is an emerging cloud paradigm that abstracts away server management, allowing developers to focus solely on application logic~\cite{CACM19:Rise, TR19:Berkeley, CACM21:Serverless}. In this model, developers deploy programs as cloud functions, and the platform automatically manages the underlying infrastructure, including resource provisioning and auto-scaling. The simplicity and efficiency of serverless computing have led to widespread adoption in domains including web applications~\cite{Doc:AzureWebApp}, data processing pipelines~\cite{NSDI19:Shuffling, OSDI18:Pocket}, and machine learning workloads~\cite{SC20:Batch, OSDI21:Dorylus}. For cloud providers, however, realizing the potential of serverless demands extreme resource efficiency across multi-tenant server fleets.
 
-The prevailing approaches to efficient resource management typically pursue specific objectives like balancing load~\cite{SoCC22:Hermod, Doc:Knative, Doc:OpenFaaS} or maximizing the reuse of warm instances~\cite{tFaaSCache, ASPLOS24:RainbowCake, ASPLOS22:IceBreaker, ATC20:SitW, SoCC22:Hermod, Doc:OpenWhisk}. However, these approaches become resource-inefficient because they ignore the diverse resource footprints of different functions. \junyi{ask Bowen to validate this statement. I feel it's inaccurate.} If a scheduler co-locates multiple memory-heavy functions on a node, it risks exhausting available RAM while CPU cycles remain underutilized. This fragmentation creates stranded resources, preventing the node from accepting new tasks and thereby lowering overall cluster utilization.
+The prevailing approaches to efficient resource management typically pursue specific objectives like balancing load~\cite{SoCC22:Hermod, Doc:Knative, Doc:OpenFaaS} or maximizing the reuse of warm instances~\cite{FaaSCache, ASPLOS24:RainbowCake, ASPLOS22:IceBreaker, ATC20:SitW, SoCC22:Hermod, Doc:OpenWhisk}. \yunshan{However, by largely ignoring the diverse resource footprints (e.g., CPU-to-memory ratios) across different functions, these schedulers can make sub-optimal packing decisions.} If a scheduler co-locates multiple memory-heavy functions on a node, it risks exhausting available RAM while CPU cycles remain underutilized. This fragmentation creates stranded resources, preventing the node from accepting new tasks and thereby lowering overall cluster utilization.
 
-Furthermore, existing resource allocation strategies operate at the function level, where each function instance is allocated a static resource capacity~\cite{Doc:AWS_Lambda_Mem, Doc:Azure_Functions_Hosting, Doc:GCP_CloudRun_Mem, tFaaSCache, JinZXZHLJ23, zhang2024jolteon, ZhangTKCS21, ORION_MahgoubYSECB22,AQUATOPE_ZhouZD23}. This strategy is predicated on the assumption that a function exhibits uniform resource demands across all its invocations. However, this one-size-fits-all approach often leads to significant resource inefficiency, as it fails to adapt to dynamic, input-dependent workload variations.\junyi{also ask Bowen to validate this paragraph}
+Furthermore, existing resource allocation strategies predominantly operate at the function level, where a static resource capacity is allocated to each function instance~\cite{Doc:AWS_Lambda_Mem, Doc:Azure_Functions_Hosting, Doc:GCP_CloudRun_Mem, FaaSCache, JinZXZHLJ23, zhang2024jolteon, ZhangTKCS21, ORION_MahgoubYSECB22,AQUATOPE_ZhouZD23}. \yunshan{While prior work recognizes that resource demands can vary across invocations~\cite{xxx}, its solutions often rely on predicting an aggregate demand, selecting a single “optimal” static configuration~\cite{xxx}, or applying coarse-grained bin-packing~\cite{xxx}. Consequently, these strategies remain fundamentally static and cannot efficiently adapt to fine-grained, input-dependent workload variations at the request level. This one-size-fits-all approach leads to significant resource inefficiency, as it either over-provisions resources for light requests or under-provisions for heavy ones.}
 
-We confirm these inefficiencies by conducting a comprehensive analysis over a wide range of real-world serverless applications (\S\ref{sec:background:demand-analysis}). Our analysis shows that i) the CPU-to-memory ratios (core/GB) of different functions range from 0.09 to 9.20, with a CV (Coefficient of Variation) of 62.43\% which leads to sigficant resource stranding with existing placement strategies; ii) and 41\% of functions have resource usage with CV exceeding 50\% which forces over-provisioning of resources under static resource allocation. \junyi{for ii), we should emphasize this comes from different inputs at request level?}
+We confirm these inefficiencies by conducting a comprehensive analysis over a wide range of real-world serverless applications (\S\ref{sec:background:demand-analysis}). Our analysis shows that: \yunshan{i) The CPU-to-memory ratios (core/GB) of different functions vary widely, ranging from 0.09 to 9.20, with a coefficient of variation (CV) of 62.43\%. This high inter-function heterogeneity leads to significant resource stranding under existing placement strategies that ignore such diversity. ii) At the request level, 54\% of functions exhibit substantial variation in resource usage, with a CV exceeding 50\%. This degree of variability far exceeds what a static allocation can efficiently accommodate, forcing systematic over-provisioning to avoid performance degradation and resulting in low average utilization.} 
 
 To overcome these inefficiencies, we present \sysname, a serverless computing system that handles heterogeneity of functions and requests with a two-pronged solution. At the inter-server level, we introduce complementary swarming, a function placement strategy that mitigates resource stranding by co-locating functions with opposing resource requirements while preserving locality. At the intra-server level, we design a monotonic scale-up request scheduling policy that reorders the request queue for a function to enforce monotonic resource adjustment which avoids the high overhead of instance restarts. Together, these techniques allow \sysname to significantly improve cluster utilization.
 
@@ -17,53 +17,7 @@ Second, to address the overhead of handling input-dependent variance, \sysname l
 
 The key contributions of this paper are as follows:
 \begin{itemize}
-    \item We conduct a comprehensive characterization of real-world serverless workloads, identifying and quantifying the resource inefficiency caused by function and request heterogeneity.
+    \item We conduct a comprehensive characterization of real-world serverless workloads to determine and quantify the resource inefficiency caused by the heterogeneity of functions and requests.
     \item We design \sysname, a serverless computing system that co-locates functions with complementary resource requirements and dynamically adjust resources at the request level with complementary swarming for placement and monotonic scale-up for scheduling.
-    \item We implement and evaluate \sysname on real-world workloads, demonstrating up to 55.53\% higher CPU utilization, 67.01\% higher memory utilization, and 103.71\% greater cluster throughput compared to state-of-the-art serverless systems.
+    \item We implement and evaluate \sysname on real-world workloads, demonstrating up to 55.53\% higher CPU utilization, 67.01\% higher memory utilization, and 103.71\% greater cluster throughput compared to state-of-the-art serverless~systems.
 \end{itemize}
-
-% \todo{maybe need a table to compare \sysname with existing solutions}
-
-%Resource management in serverless computing has been an extensively studied problem~\cite{FaaSCache_ASPLOS21}, with numerous solutions proposed in the literature\todo{citation}.
-%Most existing approaches operate at the function level; that is, resources are allocated to function instances, which further select requests to process.
-%A key assumption underlying these approaches is that a serverless function exhibits consistent resource demands across all invocations.
-%
-%However, recent analyses of real-world serverless workloads have revealed significant skew in resource consumption across different requests for the same function\todo{citation}.
-%Our analysis (\S\ref{sec:demand-analysis}) also confirms that the resource usage of a serverless function can vary by up to XXX times\todo{variation} across different requests.
-%This high variability leads to significant inefficiencies for conventional, function-level policies.
-%To guarantee reliable performance, these policies must provision resources for a function's peak (i.e., worst-case) demand, resulting in substantial resource wastage for the vast majority of less-demanding requests. 
-%Additionally, we find that this input-dependent resource usage is not only skewed but also highly predictable, achieving an accuracy of XXX\%\todo{prediction accuracy}.
-%
-%Concurrently, techniques that allow for dynamic adjustment of a container's resource capacity have been proposed\todo{citation(k8s, escra, etc.)}.
-%These techniques make it possible to alter the resource allocation of a running container in-place, thereby avoiding the costly overhead of resource reallocation.
-%
-%Capitalizing on these developments, we propose a \textit{request-level} resource allocation policy that provisions the exact amount of resources for each request.
-%The key idea is to predict the resource demand of each incoming request and dynamically adjust the target container's resource capacity accordingly.
-%Such a fine-grained strategy ensures that requests are processed using only the necessary resources, which can significantly reduce cluster-wide resource wastage.
-%
-%However, realizing an effective request-level resource management system introduces two challenges.
-%First, to achieve high resource utilization through dynamic resource reallocation, the system must rely on oversubscription,
-%where the sum of maximum possible resources required for colocated containers exceeds the physical capacity of the server.
-%Given the high variability in per-request resource demands, a high oversubscription ratio leads to resource contention and frequent container evictions.
-%This forces the system to adopt a low oversubscription ratio, negating much of the potential efficiency gains from request-level resource allocation.
-%
-%Second, dynamic resource adjustment mechanisms introduce non-negligible overhead.
-%Specifically, while increasing a container's resource capacity is a relatively fast operation, decreasing it is often much slower.
-%For example, reducing the memory capacity of a container requires reclaiming memory pages, which incurs substantial latency.
-%As resource adjustment occurs on the critical path of request execution, this latency directly increases the end-to-end request handling time.
-%
-%To address these challenges, we propose \sysname, a serverless resource manager that allocates resources at the request level.
-%To mitigate the risk of eviction from oversubscription, \sysname adopts a XXX\todo{placement algorithm name} placement strategy.
-%This strategy classifies requests into distinct tiers based on their predicted resource demands and specializes containers to handle requests from specific tiers.
-%Moreover, this strategy incorporates a XXX\todo{Other feature of placement algorithm. E.g., coloring.} technique to maximize server utilization by colocating containers with complementary resource requirements.
-%
-%
-%\sysname further tackles the overhead of resource adjustment with a XXX\todo{scheduling algorithm name} request scheduling algorithm.
-%This algorithm organizes incoming requests into monotonic queues, where requests are sorted by increasing resource demand.
-%By processing the requests in a queue sequentially, a container's resource capacity only needs to be incrementally increased.
-%A costly resource-decreasing operation is only required when the system finishes one queue and switches to another with a lower starting resource requirement.
-%This design reduces the number of resource-decreasing operations, thereby significantly mitigating its impact on overall latency.
-%
-%Experiments show that \todo{summary of experiments results.}
-%
-%\todo{summary of contributions.}
