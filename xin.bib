@@ -574,6 +574,12 @@ note = "\url{https://github.com/p4lang/p4-applications/blob/master/docs/INT.pdf}
   publisher={Elsevier}
 }
 
+@book{Gallager2013Stochastic,
+  author    = {Robert G. Gallager},
+  title     = {Stochastic Processes: Theory for Applications},
+  publisher = {Cambridge University Press},
+  year      = {2013},
+}
 
 %%%
 %%% locking
@@ -3948,13 +3954,6 @@ note = "\url{http://scpsolver.org}"
   publisher={VLDB Endowment}
 }
 
-@article{jonas2019cloud,
-  title={Cloud programming simplified: A berkeley view on serverless computing},
-  author={Jonas, Eric and Schleier-Smith, Johann and Sreekanti, Vikram and Tsai, Chia-Che and Khandelwal, Anurag and Pu, Qifan and Shankar, Vaishaal and Carreira, Joao and Krauth, Karl and Yadwadkar, Neeraja and others},
-  journal={arXiv preprint arXiv:1902.03383},
-  year={2019}
-}
-
 @article{hellerstein2018serverless,
   title={Serverless computing: One step forward, two steps back},
   author={Hellerstein, Joseph M and Faleiro, Jose and Gonzalez, Joseph E and Schleier-Smith, Johann and Sreekanti, Vikram and Tumanov, Alexey and Wu, Chenggang},
@@ -3995,13 +3994,6 @@ year = {2024}
   author={Ao, Lixiang and Izhikevich, Liz and Voelker, Geoffrey M and Porter, George},
   booktitle=socc,
   year={2018}
-}
-
-@inproceedings{pu2019shuffling,
-  title={Shuffling, fast and slow: Scalable analytics on serverless infrastructure},
-  author={Pu, Qifan and Venkataraman, Shivaram and Stoica, Ion},
-  booktitle=nsdi,
-  year={2019}
 }
 
 @inproceedings{fouladi2019laptop,
@@ -6591,11 +6583,11 @@ keywords = {Realtime Support; Containerized Edge Service; Cloud-Native}
   year = {2024}
 }
 
-@misc{redis,
-  author       = {Redis},
-  title        = {{Data structure store}},
-  url = {https://redis.io/},
-  year = {2024}
+@misc{MinIO,
+  author = {{MinIO}},
+  title        = {{Exascale AI Data Store}},
+  url = {https://www.min.io},
+  year = {2025}
 }
 
 @misc{scipy,
@@ -6698,17 +6690,6 @@ keywords = {Realtime Support; Containerized Edge Service; Cloud-Native}
   pages        = {782--796},
   year         = {2022},
   organization = {Lausanne, Switzerland}
-}
-
-@inproceedings{Pocket_KlimovicWSTPK19,
-  author       = {Qifan Pu and
-                  Shivaram Venkataraman and
-                  Ion Stoica},
-  title        = {Shuffling, Fast and Slow: Scalable Analytics on Serverless Infrastructure},
-  booktitle    = {Proceedings of the 2019 {USENIX} Symposium on Networked Systems Design and Implementation},
-  pages        = {193--206},
-  year         = {2019},
-  organization = {Boston, MA}
 }
 
 @inproceedings{SONIC_MahgoubSMKCB21,
@@ -6959,26 +6940,6 @@ keywords = {Realtime Support; Containerized Edge Service; Cloud-Native}
   pages        = {663--677},
   year         = {2022},
   organization = {Rennes, France},
-}
-
-@inproceedings{Help_LiG0CXZSMY0G22,
-  author       = {Zijun Li and
-                  Linsong Guo and
-                  Quan Chen and
-                  Jiagan Cheng and
-                  Chuhao Xu and
-                  Deze Zeng and
-                  Zhuo Song and
-                  Tao Ma and
-                  Yong Yang and
-                  Chao Li and
-                  Minyi Guo},
-  title        = {Help Rather Than Recycle: Alleviating Cold Startup in Serverless Computing
-                  Through Inter-Function Container Sharing},
-  booktitle    = {Proceedings of the 2022 {USENIX} Annual Technical Conference},
-  pages        = {69--84},
-  year         = {2022},
-  organization = {Carlsbad, CA, USA},
 }
 
 % placement and routing
@@ -7306,12 +7267,6 @@ doi = {10.1145/3406011},
 journal = cacm
 }
 
-@inproceedings{NSDI19:Shuffling,
-    author = {Qifan Pu and Shivaram Venkataraman and Ion Stoica},
-    title = {Shuffling, Fast and Slow: Scalable Analytics on Serverless Infrastructure},
-    booktitle = nsdi,
-    year = {2019},
-}
 @inproceedings{NSDI17:Encoding,
     author = {Sadjad Fouladi and Riad S. Wahby and Brennan Shacklett and Karthikeyan Vasuki Balasubramaniam and William Zeng and Rahul Bhalerao and Anirudh Sivaraman and George Porter and Keith Winstein},
     title = {Encoding, Fast and Slow: Low-Latency Video Processing Using Thousands of Tiny Threads},
@@ -7403,13 +7358,6 @@ booktitle = asplos,
     booktitle = asplos
 }
 
-@inproceedings{ATC20:SitW,
-    author = {Mohammad Shahrad and Rodrigo Fonseca and Inigo Goiri and Gohar Chaudhry and Paul Batum and Jason Cooke and Eduardo Laureano and Colby Tresness and Mark Russinovich and Ricardo Bianchini},
-    title = {Serverless in the Wild: Characterizing and Optimizing the Serverless Workload at a Large Cloud Provider},
-    booktitle = atc,
-    year = {2020},
-}
-
 @inproceedings{SoCC22:Hermod,
 author = {Kaffes, Kostis and Yadwadkar, Neeraja J. and Kozyrakis, Christos},
 title = {Hermod: principled and practical scheduling for serverless functions},
@@ -7440,14 +7388,6 @@ booktitle = socc,
   howpublished = {\url{https://knative.dev/}},
   note         = {Accessed: 2025-10-10},
   year         = {2025}
-}
-
-@inproceedings{shahrad2020serverless,
-  title={Serverless in the wild: Characterizing and optimizing the serverless workload at a large cloud provider},
-  author={Shahrad, Mohammad and Fonseca, Rodrigo and Goiri, Inigo and Chaudhry, Gohar and Batum, Paul and Cooke, Jason and Laureano, Eduardo and Tresness, Colby and Russinovich, Mark and Bianchini, Ricardo},
-  booktitle={2020 USENIX annual technical conference (USENIX ATC 20)},
-  pages={205--218},
-  year={2020}
 }
 
 @inproceedings{wang2018peeking,
@@ -7574,4 +7514,121 @@ numpages = {16},
 keywords = {cloud, cold starts, datasets, serverless, time series},
 location = {Rotterdam, Netherlands},
 series = {EuroSys '25}
+}
+
+@article{SHAPIRO1965,
+  doi = {10.1093/biomet/52.3-4.591},
+  url = {https://doi.org/10.1093/biomet/52.3-4.591},
+  year  = {1965},
+  month = {dec},
+  publisher = {Oxford University Press ({OUP})},
+  volume = {52},
+  number = {3-4},
+  pages = {591--611},
+  author = {S. S. SHAPIRO and M. B. WILK},
+  title = {An analysis of variance test for normality (complete samples)},
+  journal = {Biometrika}
+}
+
+@article{f4feef4d-12ae-314a-a10b-d1f2768e819a,
+ ISSN = {01621459, 1537274X},
+ URL = {http://www.jstor.org/stable/2283970},
+ author = {Hubert W. Lilliefors},
+ journal = {Journal of the American Statistical Association},
+ number = {318},
+ pages = {399--402},
+ publisher = {[American Statistical Association, Taylor & Francis, Ltd.]},
+ title = {On the Kolmogorov-Smirnov Test for Normality with Mean and Variance Unknown},
+ urldate = {2025-12-26},
+ volume = {62},
+ year = {1967}
+}
+
+@inproceedings{soccKaffes,
+author = {Kaffes, Kostis and Yadwadkar, Neeraja J. and Kozyrakis, Christos},
+title = {Centralized Core-granular Scheduling for Serverless Functions},
+year = {2019},
+isbn = {9781450369732},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/3357223.3362709},
+doi = {10.1145/3357223.3362709},
+booktitle = {Proceedings of the ACM Symposium on Cloud Computing},
+pages = {158–164},
+numpages = {7},
+keywords = {serverless computing, scheduling, resource allocation, cloud computing},
+location = {Santa Cruz, CA, USA},
+series = {SoCC '19}
+}
+
+@inproceedings{soccGolgi,
+author = {Li, Suyi and Wang, Wei and Yang, Jun and Chen, Guangzhen and Lu, Daohe},
+title = {Golgi: Performance-Aware, Resource-Efficient Function Scheduling for Serverless Computing},
+year = {2023},
+isbn = {9798400703874},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/3620678.3624645},
+doi = {10.1145/3620678.3624645},
+booktitle = {Proceedings of the 2023 ACM Symposium on Cloud Computing},
+pages = {32–47},
+numpages = {16},
+keywords = {Resource Management, Scheduling, Serverless Computing},
+location = {Santa Cruz, CA, USA},
+series = {SoCC '23}
+}
+
+@inproceedings{soccAtoll,
+author = {Singhvi, Arjun and Balasubramanian, Arjun and Houck, Kevin and Shaikh, Mohammed Danish and Venkataraman, Shivaram and Akella, Aditya},
+title = {Atoll: A Scalable Low-Latency Serverless Platform},
+year = {2021},
+isbn = {9781450386388},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/3472883.3486981},
+doi = {10.1145/3472883.3486981},
+booktitle = {Proceedings of the ACM Symposium on Cloud Computing},
+pages = {138–152},
+numpages = {15},
+keywords = {Low-Latency, Scalable, Serverless Computing},
+location = {Seattle, WA, USA},
+series = {SoCC '21}
+}
+
+@inproceedings {CherryPick,
+author = {Omid Alipourfard and Hongqiang Harry Liu and Jianshu Chen and Shivaram Venkataraman and Minlan Yu and Ming Zhang},
+title = {{CherryPick}: Adaptively Unearthing the Best Cloud Configurations for Big Data Analytics},
+booktitle = {14th USENIX Symposium on Networked Systems Design and Implementation (NSDI 17)},
+year = {2017},
+isbn = {978-1-931971-37-9},
+address = {Boston, MA},
+pages = {469--482},
+url = {https://www.usenix.org/conference/nsdi17/technical-sessions/presentation/alipourfard},
+publisher = {USENIX Association},
+month = mar
+}
+
+@inproceedings {Selecta,
+author = {Ana Klimovic and Heiner Litz and Christos Kozyrakis},
+title = {Selecta: Heterogeneous Cloud Storage Configuration for Data Analytics},
+booktitle = {2018 USENIX Annual Technical Conference (USENIX ATC 18)},
+year = {2018},
+isbn = {978-1-939133-01-4},
+address = {Boston, MA},
+pages = {759--773},
+url = {https://www.usenix.org/conference/atc18/presentation/klimovic-selecta},
+publisher = {USENIX Association},
+month = jul
+}
+
+@inproceedings {OPTIMUSCLOUD,
+author = {Ashraf Mahgoub and Alexander Michaelson Medoff and Rakesh Kumar and Subrata Mitra and Ana Klimovic and Somali Chaterji and Saurabh Bagchi},
+title = {{OPTIMUSCLOUD}: Heterogeneous Configuration Optimization for Distributed Databases in the Cloud},
+booktitle = {2020 USENIX Annual Technical Conference (USENIX ATC 20)},
+year = {2020},
+isbn = {978-1-939133-14-4},
+pages = {189--203},
+url = {https://www.usenix.org/conference/atc20/presentation/mahgoub},
+publisher = {USENIX Association},
+month = jul
 }

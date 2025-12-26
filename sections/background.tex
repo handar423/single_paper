@@ -9,51 +9,21 @@
 
 Serverless computing has emerged as a promising cloud paradigm, allowing developers to focus on application logic by abstracting away infrastructure tasks such as provisioning, scaling, and maintenance. In this event-driven model, users simply provide code (functions) with basic resource specifications and triggers. The platform then orchestrates the entire lifecycle\textemdash provisioning sandboxed environments, performing on-demand autoscaling, and managing pay-per-use billing. Consequently, efficient resource management within these platforms is essential to ensure high performance, maximize utilization, and minimize costs.
 
-In practice, resource management in serverless platforms encompasses two primary dimensions: i) per-instance resource configuration, which defines the resource limits for individual function sandboxes; and ii) per-function orchestration, which governs autoscaling (instance count) and placement (node selection). Currently, both dimensions rely on static and uniform settings, as detailed below. \junyi{This is a very strong argument. I doubt this. should ask Bowen to double check}
+In practice, resource management in serverless platforms encompasses two primary dimensions: i) per-instance resource configuration, which defines the resource limits for individual function instances; and ii) per-function orchestration, which governs autoscaling for instance count and placement for node~selection.
 
-\parabf{Per-instance resource allocation.}
+\yunshan{\parabf{Per-instance resource allocation.}
 % 1) 静态的运行时资源配置：介绍 lambda 支持指定固定资源规格，及其对延迟和开销的影响，所以选取一个所有请求都不违背qos的配置
 Existing serverless computing systems from both industry~\cite{Doc:Azure_Functions_Hosting,
-Doc:GCP_CloudRun_Mem, aws_lambda} and academia~\cite{FaaSCache, shahrad2020serverless, wang2018peeking, pu2019shuffling}
-allocate a uniform amount of resources for all instances of a given function. In AWS Lambda, a developer specifies a memory size (e.g., 128 MB--10,240 MB), from which the platform derives proportional vCPU and network bandwidth shares~\cite{aws_lambda}. Developers may also set ephemeral storage per instance (default 512 MB, configurable up to a few gigabytes). These limits remain fixed throughout the sandbox's lifetime. Similar static per-instance specifications are used by Azure Functions~\cite{Doc:Azure_Functions_Hosting} and Google Cloud Run~\cite{Doc:GCP_CloudRun_Mem}. This approach presumes uniform resource demand across function invocations. A user typically selects the smallest configuration that satisfies the function's QoS (e.g., latency SLO) to minimize costs. \todo{add some citations}
+Doc:GCP_CloudRun_Mem, aws_lambda} and academia~\cite{FaaSCache, ShahradFGCBCLTR20, wang2018peeking, pu2019shuffling}
+allocate a uniform amount of resources for all instances of a given function. In AWS Lambda, a developer specifies a memory size (\emph{e.g.}, 128 MB--10,240 MB), from which the platform derives proportional vCPU and network bandwidth shares~\cite{aws_lambda}. Developers may also set ephemeral storage per instance (default 512 MB, configurable up to a few gigabytes). These limits remain fixed throughout the instance lifetime. Similar static per-instance specifications are used by Azure Functions~\cite{Doc:Azure_Functions_Hosting} and Google Cloud Run~\cite{Doc:GCP_CloudRun_Mem}. This approach presumes uniform resource demand across function requests. Consequently, configuration optimizations focus on profile-guided parameter tuning~\cite{aws_lambda_power_tuning,FaaSCache, ShahradFGCBCLTR20, zhang2024jolteon, JinZXZHLJ23}: by profiling across discrete configurations, they derive latency–cost curves to select the cheapest configuration that satisfies a given SLO, thereby minimizing cost under QoS constraints.
 
-%  已有工作: 运行时资源配置：根据 profile 进行 static 资源分配，在延迟和开销间做合理tradeoff，引用一些相关工作，如 
-Optimizations on the static per-instance resource allocation focus on
-profile-guided parameter tuning~\cite{aws_lambda_power_tuning,FaaSCache, shahrad2020serverless, wang2018peeking, pu2019shuffling, zhang2024jolteon, JinZXZHLJ23}
-By profiling functions across discrete resource configurations, this method derives latency–cost curves to identify the cheapest configuration satisfying specific SLOs. An automated tool can then use these profiles to minimize costs under QoS constraints by exploiting per-function heterogeneity.
 
 \parabf{Instance scaling and placement.}
 % 2）根据静态资源配置进行容器扩缩容放置：现有的 serverless 系统大多基于静态资源配置进行容器放置调度
 % 仅容器启动、离开时比较资源：只需维护节点已分配资源和未分配资源总计，任务到来时可以分配到未分配资源>静态请求资源的节点上，更新已分配资源、未分配资源，函数容器销毁时释放资源、更新已分配资源、未分配资源即可
-Existing serverless systems perform scaling~\cite{aws_scaling_window, aws_scaling_eq, knative_scaling} and placement based on a static per-function resource requirement. While autoscalers adjust replica counts in response to load, schedulers employ a simple resource accounting model where each node tracks allocated versus available capacity. A container is admitted to a node only if the available capacity meets the function’s static requirement (e.g., memory, vCPU). Crucially, these resource counters are updated only during lifecycle events\textemdash decremented upon placement and incremented upon termination\textemdash ignoring actual usage during execution.
+Existing serverless systems perform scaling~\cite{aws_scaling_window, aws_scaling_eq, knative_scaling} and placement based on a static per-function resource requirement. While autoscalers adjust replica counts in response to load, schedulers employ a simple resource accounting model where each node tracks allocated versus available capacity. The resource counters are updated only during lifecycle events\textemdash decremented upon placement and incremented upon termination\textemdash ignoring actual usage during execution. An instance is admitted to a node only if the available capacity meets the function’s static requirement (\emph{e.g.}, memory, vCPU). For instance scaling and placement, recent research has pursued two main optimizations: (i) for autoscaling, using prediction to right-size replica counts and prewarm functions~\cite{ShahradFGCBCLTR20, ORION_MahgoubYSECB22}; and (ii) for placement, improving efficiency through cache-aware~\cite{SOCK_OakesYZHHAA18}, heterogeneity-aware~\cite{RoyPT22}, and data-affinity strategies~\cite{Wukong_CarverZWAWC20, ORION_MahgoubYSECB22}.
 
-% 已有工作：
-
-% 第一段，函数容器副本数量：基于历史预测，引用文章
-For autoscaling, recent systems research uses prediction to
-right-size replicas and proactively prewarm functions. Shahrad et al.
-analyze production traces and propose a per-function histogram policy
-that jointly sets keep-alive and pre-warming windows, cutting cold
-starts at lower cost~\cite{shahrad2020serverless}. For workflows,
-Orion models end-to-end SLOs in DAGs and prewarms downstream stages
-with the right look-ahead~\cite{ORION_MahgoubYSECB22}.
-
-% 第二段（或二、三段），函数容器副本放置缓存亲和性、多资源综合考虑调度：考虑（先几句话说缓存为啥重要）缓存是否存在、多资源性质（即预备资源分配），引用文章
-% 可以考虑，包含 FaasCache这种单机容器缓存管理， serverless workflow 相邻stage亲和放置，jiagu这种多节点协同缓存管理，引用更多文章
-For placement, Recent advancements consider three main aspects: cache awareness,
-heterogeneous resource, and data-affinity, improving cost-efficiency and latency in serverless systems.
-Cache-aware strategies reduce cold start overheads by enabling instances to share initialized memory states~\cite{SOCK_OakesYZHHAA18, li2022help}, allowing for rapid and cost-effective instantiation. Heterogeneity-aware placement~\cite{RoyPT22, DuLJXZC22} optimizes cluster utilization by matching diverse function resource profiles to specific hardware capabilities, thereby minimizing waste. Finally, data-affinity strategies~\cite{Wukong_CarverZWAWC20, ORION_MahgoubYSECB22} focus on serverless workflows, co-locating dependent tasks to reduce data transfer overheads between stages.
-%Incorporating cache awareness helps to decrease costs and latency associated with cold starts.
-%Different instances can share certain memory states~\cite{SOCK_OakesYZHHAA18, li2022help},
-%allowing for rapid and cost-efficient instance creation.
-%Moreover, considering heterogeneous resource awareness~\cite{RoyPT22, DuLJXZC22} in placement is critical,
-%as functions and resources exhibit heterogeneous characteristics.
-%This approach minimizes resource wastage and optimizes utilization.
-%Additionally, data-affinity aware placement strategies~\cite{Wukong_CarverZWAWC20, ORION_MahgoubYSECB22}
-%have been proposed for serverless workflows to reduce data transfer overheads between stages.
-
-
-
+Taken together, the prevailing serverless paradigm relies on modeling each function with a static, uniform resource profile. However, our characterization reveals that this static paradigm conflicts with a dual-layered heterogeneity: diverse resource profiles across functions and variable demands within each function. In the next two subsections, we first quantify these heterogeneities (\S\ref{sec:background:demand-analysis}) and then analyze the system-level challenges they pose to dynamic resource allocation (\S\ref{sec:background:challenges}).}
 
 % 2. serverless 函数资源需求分析
 \subsection{Analysis of Resource Requirements of Functions}
@@ -78,36 +48,9 @@ The resource demands of serverless functions are highly heterogeneous. We quanti
 \label{fig:usage_variation}
 \end{figure}
 
-\begin{figure}[t]
-  \centering
-  \includegraphics[width=0.95\linewidth]{figures/background/cpu_density_4funcs_134_161_170_206.pdf}
-  \caption{Representative distributions of function resource consumption.}
-    \vspace{-15pt}
-  \label{fig:usage_patterns}
-\end{figure}
-
 % 2) 调用级别资源占用
-\paraf{Resource Usage Variation Across Invocations.}
-Resource demand also exhibits significant variation across different invocations of the same function. We compute  the CV for CPU usage of each function across its invocations. The distribution of these CV values is presented in Figure~\ref{fig:usage_variation}. Our analysis reveals that for a substantial portion (54\%) of functions, the CV exceeds 50\%, indicating that these functions have a highly dispersed resource demand profile across invocations. A further 26\% of functions exhibit a moderate degree of variation, with CV values between 15\% and 50\%. Only 20\% of functions demonstrate relatively stable resource requirements (CV $<$ 15\%). \junyi{is this classification standard?} \todo{feasible to characterize discrete using CV~\cite{ShahradFGCBCLTR20}, but lack clear classification standard, revised to directly uses CV numerical value.}
-
-To provide deeper insight into these statistical patterns, Figure~\ref{fig:usage_patterns} 
-illustrates four representative resource consumption distributions observed in 
-the trace: (a) a quasi-normal distribution (where the truncated right tail is 
-attributed to the imposed per-instance resource limit); (b) a long-tailed 
-distribution; (c) a concentrated distribution; and (d) certain atypical cases 
-that do not conform to standard distributions, potentially influenced by specific 
-input parameter distributions or external factors. This intra-function variability 
-necessitates a scheduling mechanism that can adapt to dynamic, request-level 
-resource needs rather than relying on a static capacity. \junyi{this observation is interesting. might want to do more analysis and explain why.}
-
-
-% % 2) 现有调度方案的问题
-% \parabf{Drawback of existing solutions: Static resource allocation waste resources.}
-% Static, uniform per‑instance sizing ignores intra‑function resource usage variability.
-% When set to a high tier, most invocations are overprovisioned, wasting CPU/memory
-% and inflating cost. When set to a low tier, peak‑demand invocations are
-% underprovisioned, causing throttling, queuing, memory overflow.
-% Fixed sizing also worsens data locality and resource fragmentation.
+\paraf{Resource Usage Variation Across Requests.}
+Resource demand also varies significantly across different requests of the same function. We compute the coefficient of variation (CV) for the CPU usage of each function across its request trace. The distribution of these CV values is presented in Figure~\ref{fig:usage_variation}. Our analysis shows that variability is the norm rather than the exception: for 54\% of functions, the CV exceeds 50\%, and an additional 26\% have a CV between 15\% and 50\%. This widespread and often substantial variability directly contradicts the assumption of uniform demand underlying static allocation. Consequently, any static resource allocation must provision for the peak demand of such variable functions, inevitably leading to low average utilization.
 
 % 3) Opportunity: 函数动态运行时资源调整 
 % 现有容器框架支持动态运行时资源分配（具体机制或者接口），以及其好处（节省资源减少浪费）
@@ -118,26 +61,12 @@ platforms like Kubernetes now allow the resource allocations (CPU and memory) of
 a running pod to be updated without restarting it, via mechanisms such as the Pod 
 resize subresource and live cgroup updates~\cite{Doc:K8s_Pod_Resize, Doc:K8s_CRI_Update}.
 This capability enables a container's assigned resources to be aligned in real 
-time with the actual demand of the request it is processing. It thus provides a 
+time with the actual demand of the incoming request. It thus provides a 
 foundational mechanism to move beyond static per-function allocation, toward a 
-fine-grained model where resources can be expanded or contracted per invocation. 
+fine-grained model where resources can be expanded or contracted per task. 
 It absorbs demand bursts, reduces stranded resources from over-provisioning, 
 and lowers the risk of SLO violation\textemdash while preserving performance 
-benefits of a warm sandbox.
-
-% Kubernetes enables in‑place vertical scaling without pod recreation via the Pod 
-% resize subresource, allowing live updates to both CPU and memory resource requests 
-% and limits. CPU resources can be adjusted by altering cgroup CPU shares and quotas, 
-% allowing the kubelet to allocate CPU cycles according to usage metrics and policy 
-% constraints. Similarly, memory scaling is achieved by modifying cgroup limits,
-% which dynamically changes the memory allocation for a running container without 
-% stopping it.\cite{Doc:K8s_Pod_Resize, Doc:K8s_CRI_Update}. Dynamically aligning 
-% each invocation's resource demands with its sandbox allocation absorbs bursts and 
-% handles intra-function heterogeneity, improving utilization and reducing 
-% overprovisioning and SLO risks. This ensures that all resources can be increased 
-% or decreased to respond to real-time demands. A serverless control plane can 
-% utilize these features to dynamically adjust sandboxes for both CPU and memory, 
-% optimizing resources while preserving state and improving cost and latency efficiency.
+benefits of a warm instance.
 
 % 3. 动态资源分配的挑战
 
@@ -148,66 +77,23 @@ benefits of a warm sandbox.
 % strawman solution：发生扩容剩余节点资源不足时直接evict其他同节点容器，但带来缓存损失，且可能放大（相对较大规格的容器扩容，可能一下需要evict多个小规格容器）
 % appeal for Minimal-Disruption Placement Scaling with multi-resource balance awareness
 
-\paraf{Challenge 1: Placement under dynamic in-place resizing.} Dynamic in-place resizing disrupts the fixed-size bin-packing model: a sandbox’s footprint may expand while active, making node feasibility assessments at start/stop times inadequate. A simplistic approach is to evict co-located sandboxes to make space when upscaling faces insufficient capacity. However, this naive strategy risks evicting other co-located function instances with increased resource demand. This issue is exacerbated when a large upsizing occurs under constrained resource availability, resulting in eviction amplification: a single significant resize event can force the eviction of multiple smaller co-located sandboxes, thereby hurting cache locality and increasing tail latency. Additionally, fragmentation can occur when resource demand descreases. These problems may lead to low resource utilization and application throughput.
+\paraf{Challenge 1: Placement under dynamic in-place resizing.} Dynamic in-place resizing disrupts the fixed-size bin-packing model: a sandbox’s footprint may expand while active, making node feasibility assessments at start/stop times inadequate. A simplistic approach is to evict co-located instances to make space when upscaling faces insufficient capacity. However, this naive strategy risks evicting other co-located function instances with increased resource demand. This issue is exacerbated when a large upsizing occurs under constrained resource availability, resulting in eviction amplification: a single significant resize event can force the eviction of multiple smaller co-located instances, thereby hurting cache locality and increasing tail latency. Additionally, fragmentation can occur when resource demand descreases. These problems may lead to low resource utilization and application throughput.
 
-Therefore, We require an intelligent placement strategy that is aware of multi-resource needs \junyi{should be aware of the need of resizing?}, minimizing sandbox disruption. It should balance the CPU and memory usage per node to prevent fragmentation, employing targeted part-migrations \junyi{what is this, confusing} only when they minimize overall disruption. Such policies encourage managed churn, safeguard warm states, and enhance packing efficiency and throughput during dynamic resizing.
-
-% todo: 请按需加图
-
-% \begin{figure}[t]
-%   \centering
-%   \begin{minipage}[t]{0.48\linewidth}
-%     \centering
-%     \includegraphics[width=\linewidth]
-%     {figures/background/challenge2_eviction_amplification.png}
-%     \vspace{2pt}
-%     \small Left: Upsizing a large sandbox may evict many small ones
-%     (amplification).
-%   \end{minipage}\hfill
-%   \begin{minipage}[t]{0.48\linewidth}
-%     \centering
-%     \includegraphics[width=\linewidth]
-%     {figures/background/challenge2_stranding.png}
-%     \vspace{2pt}
-%     \small Right: Ignoring multi‑resource balance strands CPU or memory.
-%   \end{minipage}
-%   \caption{Challenge 2: Dynamic in‑place scaling complicates placement under
-%   tight capacity.}
-%   \label{fig:challenge2_placement}
-% \end{figure}
+\yunshan{Therefore, an intelligent placement strategy must anticipate and mitigate the disruptive effects of resizing. Its goal is twofold: i) to balance CPU and memory usage per node from the outset, preventing resource fragmentation and minimizing the need for disruptive migrations; and ii) when migrations are unavoidable, to execute them in a manner that minimizes overall instance disruption. By promoting managed, minimal churn, such a strategy safeguards warm states (maximizing reuse) and maintains high packing efficiency and throughput even during dynamic resizing.}
 
 
-% 3）挑战3：资源缩容本身有成本挑战：扩容成本低，但缩容成本高。对于请求量没那么大的函数有难度。
-%Second, dynamic resource adjustment mechanisms introduce non-negligible overhead.
-%Specifically, while increasing a container's resource capacity is a relatively fast operation, decreasing it is often much slower.
-%For example, reducing the memory capacity of a container requires reclaiming memory pages, which incurs substantial latency.
-%As resource adjustment occurs on the critical path of request execution, this latency directly increases the end-to-end request handling time.
-% add overhead detail
+\paraf{Challenge 2: High overhead of downsizing.} Dynamic in-place scaling is asymmetric: upsizing is swift, but downsizing incurs high costs. Increasing the memory allocation takes effect immediately, whereas reducing it triggers cgroup reclamation, page-cache eviction, and compaction, potentially stalling both runtime and kernel. \yunshan{Since resizing affects the request path, this slow reclaim process increases tail latency and queueing, which in turn lowers overall node throughput even when average capacity suffices.}
 
-% 对于请求量没那么大的函数
-% strawman 1: 起很多副本，细致应对不同资源需求，但导致大量浪费
-% strawman 2：只起少量副本，一会儿扩一会儿缩，但频繁调整带来高开销
-% appeal for(opportunity): Vertical Scaling-Based Task Scheduling Algorithm，即按请求资源量从小到大reorder请求，使得单容器能从小到大单调递增扩容，然后只减少一次到很小，循环往复
-\paraf{Challenge 2: High overhead of downsizing.} Dynamic in-place scaling is asymmetric: upsizing is swift, but downsizing incurs high costs. Increasing the memory allocation takes effect immediately, whereas reducing it triggers cgroup reclamation, page-cache eviction, and compaction, potentially stalling both runtime and kernel. Since resizing affects the request path, slow reclaim increases tail latency and queueing. Concurrent shrinking actions can cause reclamation storms \junyi{do we want to introduce new term?}, lowering node throughput even when average capacity suffices.
+Two baseline strategies struggle to handle bursty, diverse functions effectively. The first approach is to over-provision numerous replicas, each fixed to a narrow size band, to avoid the need for resizing. However, this leads to significant resource fragmentation and poor utilization due to excessive headroom. The second approach is to maintain fewer replicas and resize them dynamically for every request. Unfortunately, such frequent adjustments incur high memory reclamation overheads, disrupt page caches and JIT states, and increase scheduler interference. Ultimately, both strategies degrade system throughput, negating the theoretical advantages of dynamic scaling. \yunshan{These inefficiencies are illustrated in Figure~\ref{fig:vertical_scaling_scheduling}, which contrasts the wasted headroom of static over-provisioning with the reclamation overhead of naive dynamic resizing.}
 
-Two baseline strategies struggle to handle bursty, diverse functions effectively. The first approach is to over-provision numerous replicas, each fixed to a narrow size band, to avoid the need for resizing. However, this leads to significant resource fragmentation and poor utilization due to excessive headroom. The second approach is to maintain fewer replicas and resize them dynamically for every request. Unfortunately, such frequent adjustments incur high memory reclamation overheads, disrupt page caches and JIT states, and increase scheduler interference. Ultimately, both strategies degrade system throughput, negating the theoretical advantages of dynamic scaling.
+\yunshan{Therefore, a practical dynamic scaling scheduler must achieve the following goal: it should adapt resource allocation to variable request-level demand without incurring frequent downsizing overheads. This necessitates a mechanism that can batch or reorder requests to create resource usage patterns that are conducive to monotonic (upward-only) adjustments within short time windows, thereby amortizing reclamation costs and preserving warm instance state.}
 
-\junyi{we should talk about what's the requirement instead of what we actually do} We propose a monotonic scale-up scheduler that orders invocations by predicted
-demand within short batching windows. Each sandbox handles small, then medium,
-then large requests, growing steadily and shrinking at most once per window during
-quiescence. This approach amortizes reclamation, maintains warm state, and
-alleviates pressure. Figure~\ref{fig:vertical_scaling_scheduling} demonstrates
-the benefits of this method over naive resizing with FIFO scheduling. By reordering
-requests, the scheduler reduces downsizing overheads by 33.3\%, leading to lower
-overall latency and higher system throughput.
 \begin{figure}[t]
   \centering
-  \subfloat[]{\includegraphics[trim=0 80pt 400pt 0, clip, width=0.47\linewidth]{figures/background/vertical.pdf}}
+  \subfloat[]{\includegraphics[width=0.47\linewidth]{figures/background/ex_1.pdf}}
   \hfil
-  \subfloat[]{\includegraphics[trim=400pt 80pt 0 0, clip, width=0.47\linewidth]{figures/background/vertical.pdf}}
-  \caption{In-place scaling-based task scheduling mitigates downsizing overhead
-  by reordering requests. (a) Naïve resizing, Cost = 12. (b) Monotonic Scale-up, Cost = 8.}
-  \vspace{-15pt}
+  \subfloat[]{\includegraphics[width=0.47\linewidth]{figures/background/ex_2.pdf}}
+  \caption{Inefficient scaling strategies under variable workloads. (a) Static over-provisioning. (b) Naive dynamic resizing.}
   \label{fig:vertical_scaling_scheduling}
 \end{figure}
 
