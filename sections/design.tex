@@ -1,17 +1,17 @@
 \section{\sysname Design}
 
-\yunshan{\sysname employs a two-level hierarchical scheduling approach for function 
-instances and requests: complementary swarming placement at the inter-server 
-level and monotonic scale-up scheduling at the intra-server level.}
+\yunshan{\sysname employs a two-level hierarchical orchestration approach for 
+serverless function and request: complementary swarming dispatching at the 
+inter-node level and monotonic scale-up scheduling at the intra-node level.}
 
-\subsection{Complementary Swarming Instance Placement}
+\subsection{Complementary Swarming Dispatching}
 \label{sec:design:placement}
 
-The complementary swarming placement algorithm addresses the scheduling challenge 
+The complementary swarming dispatching algorithm addresses the scheduling challenge 
 posed by heterogeneous function resource demands, as quantified in 
 \S\ref{sec:background:demand-analysis}. It pursues a dual objective: i) maximizing 
 cluster-wide resource utilization by co-locating functions with complementary CPU 
-and memory profiles on the same server, thereby mitigating resource stranding; 
+and memory profiles on the same node, thereby mitigating resource stranding; 
 and ii) enhancing instance reuse by deliberately narrowing the set of distinct 
 functions served per node. To achieve this, the algorithm proceeds iteratively. 
 In each round, it assigns the workload of a function to one or more worker nodes 
@@ -25,7 +25,7 @@ packing with equitable load distribution.
 \subsubsection{Modeling Node Capacity and Function Demand}
 \label{subsec:modeling}
 
-A precise formulation of the placement problem requires clear representations of 
+A precise formulation of the dispatching problem requires clear representations of 
 both node resource capacity and function resource demand.
 
 \textbf{Node Resource Capacity.} We model a worker node $N_j$’s available capacity 
@@ -36,18 +36,16 @@ vector of idle (currently unallocated) resources on $N_j$ at any given moment.
 For simplicity and clarity of exposition, we focus on CPU and memory as the 
 primary bottleneck resources. Our algorithm can be extended to incorporate other 
 resources (\emph{e.g.}, network bandwidth) by increasing the dimensionality of 
-the capacity vector. To quantify the efficiency of a placement, we define the 
-\textbf{overall resource utilization} of a node \(N_j\) as the sum of its normalized 
-CPU and memory utilization:
+the capacity vector. Furthermore, we define the \textbf{overall resource utilization} 
+of a node \(N_j\) as the sum of its normalized CPU and memory utilization:
 \[
 U(N_j) = \frac{U_j^{\text{cpu}}}{C_{\text{total}}^{\text{cpu}}} + \frac{U_j^{\text{mem}}}{C_{\text{total}}^{\text{mem}}}
 \]
 where \(U_j^{\text{cpu}}\) and \(U_j^{\text{mem}}\) are the allocated resources 
 on \(N_j\), and \(C_{\text{total}}^{\text{cpu}}\) and \(C_{\text{total}}^{\text{mem}}\) 
 are the \textbf{total capacities of the entire cluster}. This definition inherently 
-balances both resource dimensions. A placement or swapping operation is considered 
-beneficial if it increases \(U(N_j)\). (The formulation can be extended with 
-resource-specific weights if needed.)
+balances both resource dimensions. An optimization step in the algorithm is considered 
+beneficial if it increases \(U(N_j)\).
 
 \textbf{Function Resource Demand.} Modeling the resource demand of a function is 
 more nuanced. We characterize it along three orthogonal dimensions:
@@ -58,32 +56,31 @@ more nuanced. We characterize it along three orthogonal dimensions:
     indicates a function’s resource affinity: a relatively small $r_i$ signifies 
     memory-intensive behavior, whereas a relatively large $r_i$ corresponds to 
     compute-intensive behavior. To reduce problem complexity, we assume this 
-    ratio remains invariant across invocations of the same function.
+    ratio remains invariant across requests of the same function.
 
     \item \textbf{Demand Volume ($\mathbf{V}_i$)}: The aggregate resource demand 
     vector for function $F_i$ within the scheduling window, denoted as 
     $\mathbf{V}_i = \left(V_i^{\text{cpu}}, V_i^{\text{mem}}\right)$. Here, $V_i^{\text{cpu}}$ and 
     $V_i^{\text{mem}}$ represent the predicted total CPU (\emph{e.g.}, in core-seconds) 
     and memory (\emph{e.g.}, in GB-seconds) required to process all expected 
-    invocations of $F_i$ in that window, respectively. While the accurate 
+    requests of $F_i$ in that window, respectively. While the accurate 
     prediction of $V_i$ is orthogonal to our placement algorithm (and its accuracy 
     naturally affects overall performance), our design accepts such a predicted 
     vector as input.
 
     \item \textbf{Demand Distribution ($D_i$)}: The statistical distribution of 
-    per-invocation resource requirements, derived from historical traces. As shown 
-    in Fig.~\ref{fig:usage_patterns}, these distributions exhibit diverse shapes 
-    (\emph{e.g.}, quasi-normal, long-tailed). $D_i$ is crucial for fine-grained 
-    load splitting when a function must be spread across multiple nodes.
+    per-request resource requirements, derived from historical traces. $D_i$ is 
+    crucial for fine-grained load splitting when a function must be spread across 
+    multiple nodes.
 \end{enumerate}
 Together, the tuple $\left<r_i, \mathbf{V}_i, D_i\right>$ forms a comprehensive 
 demand profile for each function $F_i$, enabling our algorithm to reason about 
-complementary placement and proportional workload distribution simultaneously.
+complementary dispatching and proportional workload distribution simultaneously.
 
 {
 % \setlength{\belowdisplayskip}{-140pt}
 \begin{algorithm}[t]
-    \caption{\mbox{Complementary swarming placement.}}
+    \caption{\mbox{Complementary swarming dispatching.}}
     \noindent \textbf{Data:}
     \begin{algorithmic}[1]
     \Statex \begin{itemize}
@@ -97,7 +94,7 @@ complementary placement and proportional workload distribution simultaneously.
         \item Node set \(\mathcal{N} = \{N_1, \dots, N_m\}\).
         \item Function set \(\mathcal{F} = \{F_1, \dots, F_n\}\).
     \end{itemize}
-    \Ensure Optimized placement $\mathcal{P}: \mathcal{F} \times [0,1] \to \mathcal{N}$.
+    \Ensure Optimized dispatching map $\mathcal{P}: \mathcal{F} \times [0,1] \to \mathcal{N}$.
     
     \State \textbf{// Step 1: Initialize state \& normalize function demands}
     \State \(\mathbf{L} \gets \mathbf{0}_{m \times n}\), \(\mathbf{R} \gets \mathbf{1}_n\)
@@ -107,7 +104,7 @@ complementary placement and proportional workload distribution simultaneously.
     \State
     
     \State \textbf{// Step 2: Main optimization loop}
-    \While{$\exists \; F_i \text{ s.t. } R[i] > 0$} \Comment{Placement incompletement}
+    \While{$\exists \; F_i \text{ s.t. } R[i] > 0$} \Comment{Mapping incompletement}
         \State $F_a \gets \text{RandomChoice}(\{F_i \mid R[i] > 0\})$ 
         \For{$N_j \in \mathcal{N}$}
             \State \textbf{// Assignment via free capacity}
@@ -147,18 +144,18 @@ complementary placement and proportional workload distribution simultaneously.
 \end{algorithm}
 }
 
-\subsubsection{Complementary Swarming Placement Algorithm}
+\subsubsection{Complementary Swarming Dispatching Algorithm}
 \label{subsec:placement-algorithm}
 
-Algorithm~\ref{alg:placement} presents the complementary swarming placement 
+Algorithm~\ref{alg:placement} presents the complementary swarming dispatching 
 algorithm. It takes as input the set of nodes $\mathcal{N}$ with their capacity 
 vectors $\mathbf{C}_j$, and the set of functions $\mathcal{F}$ with their demand 
-profiles $\langle r_i, \mathbf{V}_i, D_i \rangle$. The algorithm outputs a placement 
-mapping $\mathcal{P}: \mathcal{F} \times [0,1] \to \mathcal{N}$. This mapping 
+profiles $\langle r_i, \mathbf{V}_i, D_i \rangle$. The algorithm outputs a dispatching 
+map $\mathcal{P}: \mathcal{F} \times [0,1] \to \mathcal{N}$. This mapping 
 determines task dispatch: when a function's workload is split across multiple 
 nodes, $\mathcal{P}$ assigns each percentile of the function's resource‑demand 
 distribution to a specific node. This percentile‑based splitting is illustrated 
-in Fig.~\ref{fig:placement_p}.
+in Figure~\ref{fig:placement_p}.
 
 \textbf{Step 1: Initialization \& Demand Normalization.}
 The algorithm maintains two key data structures initialized in this step: i) a 
@@ -169,7 +166,7 @@ demand currently assigned to node $N_j$, initialized to all zeros (line~2).
 Furthermore, we scales the demand vector $\mathbf{V}_i$ of each function 
 proportionally so that the aggregate demand matches the total cluster capacity 
 ($\sum_i \mathbf{V}_i = \sum_j \mathbf{C}_j$). This normalization ensures the 
-subsequent placement operates under a balanced supply-demand premise (Line~3--4). 
+subsequent dispatching operates under a balanced supply-demand premise (Line~3--4). 
 
 \textbf{Step 2: Iterative Optimization Loop.}
 The core of the algorithm is an iterative loop that runs until all function demands 
@@ -213,10 +210,10 @@ empirical threshold (\emph{e.g.}, 1\%).
 \end{figure}
 }
 
-\textbf{Step 3: Fine-Grained Placement Generation.}
+\textbf{Step 3: Fine-Grained Dispatching Generation.}
 After the assignment matrix $\mathbf{L}$ is determined, the algorithm converts 
-the proportional assignments into a precise placement mapping $\mathcal{P}$ 
-(Line~24--29). This process is illustrated in Fig.~\ref{fig:placement_p}. 
+the proportional assignments into a precise dispatching map $\mathcal{P}$ 
+(Line~24--29). This process is illustrated in Figure~\ref{fig:placement_p}. 
 For each function $F_i$, the algorithm sequentially allocates contiguous percentile 
 intervals in $[0, 1]$ to each node $N_j$ that hosts $F_i$ (left side of the figure). 
 The length of the interval assigned to $N_j$ is exactly $L[j,i]$. This completes 
@@ -225,14 +222,14 @@ practice, to avoid resource fragmentation that could arise if certain nodes only
 receive large tasks, the intervals are assigned to nodes in a randomized order 
 rather than a fixed sequence; the figure omits this step for simplicity.
 
-\parabf{Task Dispatching.} At runtime, the interval $[0, 1]$ is concretely mapped 
-to the resource‑demand percentiles of $F_i$’s invocations (right side of 
-Fig.~\ref{fig:placement_p}). Specifically, using $F_i$’s historical demand 
+\parabf{Request Dispatching.} At runtime, the interval $[0, 1]$ is concretely mapped 
+to the resource‑demand percentiles of $F_i$’s requests (right side of 
+Figure~\ref{fig:placement_p}). Specifically, using $F_i$’s historical demand 
 distribution $D_i$, we pre‑compute the resource‑demand boundaries that correspond 
-to each percentile sub‑interval. When a new invocation arrives, its actual resource 
+to each percentile sub‑interval. When a new request arrives, its actual resource 
 demand (derived from input parameters and data size) is located on $D_i$ to obtain 
-its percentile $p$. The invocation is then dispatched to the node $N_j$ for which 
-$\mathcal{P}(F_i, p) = N_j$. For example, the newly arrived invocation marked in 
+its percentile $p$. The request is then dispatched to the node $N_j$ for which 
+$\mathcal{P}(F_i, p) = N_j$. For example, the newly arrived request marked in 
 the figure, whose demand percentile falls inside $[0.8, 1]$, would be dispatched 
 to Node C. Our experiments obtain accurate demand estimates from the benchmark’s 
 known input characteristics; the algorithm can be coupled with more sophisticated 
@@ -328,13 +325,13 @@ current placement. Only functions with significantly changed demand (increased
 $\mathbf{V}_i$ or altered $D_i$) are fed into the complementary swarming algorithm 
 to update their assignments. This partial update drastically reduces the number 
 of functions that need to be re‑placed in each iteration, which in turn minimizes 
-instance migration, thereby reducing scheduling churn and preserving warm sandbox 
+instance migration, thereby reducing scheduling churn and preserving warm instance 
 states. Furthermore, to prevent the accumulation of sub‑optimality that may arise 
 from multiple incremental updates, the system performs a global re‑placement 
 every 30 minutes, which recomputes the assignment for all functions from a clean 
 state, ensuring long‑term placement quality.
 
-\subsection{Monotonic Scale-up Task Scheduling}
+\subsection{Monotonic Scale-up Scheduling}
 \label{sec:design:scheduling}
 
 {
@@ -342,7 +339,7 @@ state, ensuring long‑term placement quality.
   \centering
   \includegraphics[width=0.9\linewidth]{figures/design/scheduling.pdf}
   \vspace{-10pt}
-  \caption{Monotonic acale-up task scheduling workflow.}
+  \caption{Monotonic acale-up scheduling workflow.}
   \vspace{-10pt}
   \label{fig:scheduler-arch}
 \end{figure}
@@ -357,32 +354,32 @@ thereby avoiding costly cold starts while maintaining high resource efficiency.
 
 \subsubsection{Scheduler Architecture}
 
-As illustrated in Fig.~\ref{fig:scheduler-arch}, the core scheduling structure 
+As illustrated in Figure~\ref{fig:scheduler-arch}, the core scheduling structure 
 is organized per function. For each function $F_i$, the scheduler maintains two 
 monotonic task queues: a current queue and a backup queue. Tasks in both queues 
 are ordered by their predicted resource demand in increasing order. This monotonic 
-ordering is the key to enabling efficient in‑place scaling: when a sandbox processes 
+ordering is the key to enabling efficient in‑place scaling: when an instance processes 
 tasks sequentially from a single queue, its resource allocation can be increased 
 incrementally without~restarts.
 
-\parabf{Task‑insertion rule.} When a new invocation of $F_i$ arrives, its predicted 
+\parabf{Task‑insertion rule.} When a new request of $F_i$ arrives, its predicted 
 resource demand is compared with the demand of the head (smallest) task in the 
-current queue. If the new demand is smaller, the invocation is placed into the 
+current queue. If the new demand is smaller, the request is placed into the 
 backup queue; otherwise, it is inserted into the current queue (preserving the 
 monotonic order). The purpose of this rule is not merely to keep each queue sorted, 
-but to guarantee that a sandbox, while processing tasks from a single current 
+but to guarantee that an instance, while processing tasks from a single current 
 queue, encounters a resource demand sequence that is monotonically non‑decreasing. 
-This property is essential: if a sandbox were forced to run a larger task before 
+This property is essential: if an instance were forced to run a larger task before 
 a smaller one, it would either have to start at the higher capacity (wasting 
 resources) or be restarted after a down‑scale (incurring cold‑start overhead). 
 The backup queue temporarily holds smaller tasks until the current queue is 
 fully processed, after which the roles of the two queues may swap.
 
-\parabf{Sandbox execution and priority‑based selection.} A function may have from 
-zero to multiple concurrent warm sandboxes, each dedicated to fetching tasks only 
+\parabf{Instance execution and priority‑based selection.} A function may have from 
+zero to multiple concurrent warm instances, each dedicated to fetching tasks only 
 from that function’s current queue. The scheduler assigns a dynamic priority to 
 each function (detailed in \S\ref{subsec:priority-design}). At every scheduling 
-point—triggered by a new task arrival or a task completion—the scheduler selects 
+point—triggered by a new request arrival or a task completion—the scheduler selects 
 the function with the highest priority and attempts to dispatch the head task of 
 its current queue.
 
@@ -390,28 +387,28 @@ its current queue.
 tries the following options in order, aiming to minimize overhead:
 
 \begin{enumerate}[label=\roman*)]
-    \item \textbf{Reuse} an existing sandbox of the same function whose current 
+    \item \textbf{Reuse} an existing instance of the same function whose current 
     resource allocation already meets or slightly exceeds the task’s demand, 
     thereby avoiding any scaling~operation.
     
-    \item \textbf{In‑place scaling} of a warm sandbox via restart‑free vertical 
+    \item \textbf{In‑place scaling} of a warm instance via restart‑free vertical 
     scaling (Kubernetes Pod resize API) to accommodate the task, thus preserving 
     warm state.
 
-    \item \textbf{Launch a new sandbox} (cold start) if no suitable warm sandbox 
+    \item \textbf{Launch a new instance} (cold start) if no suitable warm instance 
     is available.
 \end{enumerate}
 
 If the node lacks sufficient idle resources for options ii) or iii), the scheduler 
-evaluates eviction. It selects candidate sandboxes according to a per‑sandbox 
+evaluates eviction. It selects candidate instances according to a per‑sandbox 
 eviction priority computed as:
 \[
-\text{Prio}_{\text{sandbox}} = \frac{\text{Prio}_{\text{function}}}{N_{\text{sandboxes}}},
+\text{Prio}_{\text{instance}} = \frac{\text{Prio}_{\text{function}}}{N_{\text{instances}}},
 \]
-where \(N_{\text{sandboxes}}\) is the number of active sandboxes belonging to 
-the same function. Among sandboxes of the same function, those with larger resource 
+where \(N_{\text{instances}}\) is the number of active instances belonging to 
+the same function. Among instances of the same function, those with larger resource 
 footprints are evicted first. This scheme encourages load spreading (by penalizing 
-functions that already hold many sandboxes) and promotes fair resource sharing. 
+functions that already hold many instances) and promotes fair resource sharing. 
 Eviction is performed only if it can actually release enough resources to execute 
 the pending task; otherwise, the scheduler leaves the system unchanged and waits 
 for the next scheduling event.
@@ -436,7 +433,7 @@ The three factors are defined as follows:
     Let $t_{\text{last}}$ be the task with the largest predicted resource demand 
     in $F_i$’s current queue, and let $C_{\text{cold}}(F_i)$ denote the estimated 
     cold‑start cost of $F_i$ (\emph{i.e.}, the time overhead of launching a new 
-    sandbox). Then
+    instance). Then
     \[
     \text{factor}_1 = \max\!\left(\frac{t_{\text{last}}^{\text{mem}}}{C_j^{\text{mem}}},\; \frac{t_{\text{last}}^{\text{cpu}}}{C_j^{\text{cpu}}}\right) \cdot C_{\text{cold}}(F_i),
     \]
@@ -445,7 +442,7 @@ The three factors are defined as follows:
     factor increases when the largest pending task occupies a large fraction of 
     the node’s resources and the function itself is expensive to cold‑start. It 
     encourages the scheduler to keep executing $F_i$’s tasks consecutively, 
-    thereby raising the chance of reusing a warm sandbox.
+    thereby raising the chance of reusing a warm instance.
 
     \item \textbf{Starvation‑avoidance factor} ($\text{factor}_2$).  
     Let $W_{\max}$ be the longest waiting time among all pending tasks of $F_i$,
@@ -466,18 +463,18 @@ The three factors are defined as follows:
     \item \textbf{Scaling‑efficiency factor} ($\text{factor}_3$).  
     Let $t_{\text{first}}$ and $t_{\text{last}}$ be the tasks with the smallest 
     and largest predicted resource demands in $F_i$ current queue, respectively. 
-    Under the assumption that all invocations of the same function share the same 
+    Under the assumption that all request of the same function share the same 
     CPU‑to‑memory ratio (see \S\ref{subsec:modeling}), the ratio can be computed 
     using either dimension; we use memory for concreteness:
     \[
     \text{factor}_3 = \frac{t_{\text{first}}^{\text{mem}}}{t_{\text{last}}^{\text{mem}}}.
     \]
     A large ratio (close to $1$) indicates that the queue’s resource‑demand range 
-    is narrow; consequently, a sandbox that starts with $t_{\text{first}}$ will 
+    is narrow; consequently, an instance that starts with $t_{\text{first}}$ will 
     require little additional scaling to process the remaining tasks. A small 
     ratio (\emph{i.e.}, a wide demand spread) implies that abandoning the current 
     queue would incur less “waste” of scaling effort, which is reflected by the 
     negative weight $\omega_3$.
 \end{itemize}
 
-Finally, to further promote sandbox reuse, the priority of any function that already possesses one or more warm sandboxes is \textbf{doubled}. The combined priority is recomputed at every scheduling event, enabling the scheduler to adapt dynamically to changing workload patterns.
+Finally, to further promote instance reuse, the priority of any function that already possesses one or more warm instances is \textbf{doubled}. The combined priority is recomputed at every scheduling event, enabling the scheduler to adapt dynamically to changing workload patterns.
