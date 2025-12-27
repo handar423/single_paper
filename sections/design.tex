@@ -1,10 +1,12 @@
 \section{\sysname Design}
 
-\yunshan{\sysname employs a two-level hierarchical orchestration approach for 
-serverless function and request: complementary swarming dispatching at the 
-inter-node level and monotonic scale-up scheduling at the intra-node level.}
+\sysname employs a two-level hierarchical orchestration approach for 
+serverless function and request: complementary swarming request dispatching at the 
+inter-node level and monotonic scale-up request scheduling at the intra-node level.
 
-\subsection{Complementary Swarming Dispatching}
+\todo{change task to request everywhere in this section}
+
+\subsection{Complementary Swarming Request Dispatching}
 \label{sec:design:placement}
 
 The complementary swarming dispatching algorithm addresses the scheduling challenge 
@@ -235,7 +237,7 @@ to Node C. Our experiments obtain accurate demand estimates from the benchmark�
 known input characteristics; the algorithm can be coupled with more sophisticated 
 prediction methods for further performance gains.
 
-\begin{algorithm}
+\begin{algorithm}[t]
 \caption{SwapCapacity: Compute beneficial swap capacity}
 \label{alg:swap-capacity}
 \begin{algorithmic}[1]
@@ -331,7 +333,7 @@ from multiple incremental updates, the system performs a global re‑placement
 every 30 minutes, which recomputes the assignment for all functions from a clean 
 state, ensuring long‑term placement quality.
 
-\subsection{Monotonic Scale-up Scheduling}
+\subsection{Monotonic Scale-up Request Scheduling}
 \label{sec:design:scheduling}
 
 {

@@ -24,9 +24,9 @@ CPU-to-memory ratio (shown in the table) varies widely from 0.25 to 1.50 cores/G
 highlighting the spectrum from memory-intensive (\emph{e.g.}, thumbnailer) to 
 CPU-intensive (\emph{e.g.}, graph-bfs) workloads.
 
-\begin{table*}[ht]
+\begin{table*}[t]
     \vspace{-10pt}
-    \caption{\yunshan{Benchmark characteristics: resource profiles and execution times.}\label{tab:setup}}
+    \caption{Benchmark characteristics: resource profiles and execution times.\label{tab:setup}}
     \centering
     \begin{tabular}{r c c c c c c}
         \toprule
@@ -55,20 +55,20 @@ thus representing the critical bottleneck for cluster performance optimization.
 The invocation rate of each trace is proportionally scaled so that the aggregated 
 resource demand approaches the total capacity of the cluster, while the invocation 
 frequencies across the ten benchmarks are adjusted to be nearly identical (with a 
-relative difference of less than 2\%). \yunshan{Since the original trace data is 
+relative difference of less than 2\%). Since the original trace data is 
 recorded at minute-level granularity, we model intra-minute request arrivals using 
 a Poisson process, a standard model for independent random events in systems and 
-performance analysis~\cite{Gallager2013Stochastic}.} In alignment with common 
+performance analysis~\cite{Gallager2013Stochastic}. In alignment with common 
 industrial practice~\cite{aws_scaling_window, knative_scaling_window}, the 
-scaling interval is set to 1 minute.
+scaling interval is set to one minute.
 
-\yunshan{To accurately model real-world serverless functions, we first analyze 
+To accurately model real-world serverless functions, we first analyze 
 the resource assumption distribution in the dataset~\cite{ShahradFGCBCLTR20}. 
 Using both the Shapiro-Wilk~\cite{SHAPIRO1965} and Kolmogorov-Smirnov 
 normality~\cite{f4feef4d-12ae-314a-a10b-d1f2768e819a} tests, we find that over 
 95\% of functions exhibit memory usage patterns that do not significantly deviate 
 from a normal distribution (p-value $>$ 0.05). Based on this empirical observation, 
-we model the per-function resource demand as normally distributed across function requests.}
+we model the per-function resource demand as normally distributed across function requests.
 For our evaluation, we randomly select ten functions from the dataset and perform 
 Gaussian fitting to obtain the variance of their memory usage. We then adjust 
 the input data size and parameters of each benchmark so that its actual resource 
@@ -110,7 +110,7 @@ excluded to eliminate the impact of initial cold starts.
 \subsection{Benefits of \sysname}
 \label{sec:experiments_comparsion}
 
-\begin{figure*}[ht]
+\begin{figure*}[t]
     \centering
     \subfloat[]{\includegraphics[width=0.32\linewidth]{figures/Eval/distribution_CPU Utilization.pdf}%
     \label{fig:eval_dis_cpu}}
@@ -160,7 +160,7 @@ waste caused by load-resource mismatch. Second, the monotonic scale-up
 scheduling policy reduces both resource over-provisioning and cold-start frequency, 
 further boosting overall resource utilization.
 
-\begin{table}[ht]
+\begin{table}[t]
     \vspace{-10pt}
     \caption{Performance comparison under multiple workflows.\label{tab:latency}}
     \begin{tabularx}{0.47\textwidth}{ 
@@ -179,7 +179,7 @@ further boosting overall resource utilization.
     \end{tabularx}
 \end{table}
 
-\begin{figure*}[ht]
+\begin{figure*}[t]
     \centering
     \subfloat[]{\includegraphics[width=0.32\linewidth]{figures/Eval/func_number_CPU Utilization.pdf}%
     \label{fig:eval_function_cpu}}
@@ -225,7 +225,7 @@ when the workload is larger and more diverse, the strategy reduces the number of
 distinct functions each node handles. This effect elevates the instance reuse 
 rate, which in turn improves overall~efficiency.
 
-\begin{figure*}[ht]
+\begin{figure*}[t]
     \centering
     \subfloat[]{\includegraphics[width=0.32\linewidth]{figures/Eval/skew_CPU Utilization.pdf}%
     \label{fig:eval_workload_cpu}}
@@ -380,7 +380,7 @@ this section includes both real and simulated experiments. We first demonstrate
 the performance of \sysname on a larger-scale cluster. Then we
 show the system overhead of the \sysname scheduler on up to 1024 nodes.
 
-\begin{figure*}[ht]
+\begin{figure*}[t]
     \centering
     \subfloat[]{\includegraphics[width=0.32\linewidth]{figures/Eval/16worker_distribution_CPU Utilization.pdf}
     \label{fig:eval_big_cpu}}
