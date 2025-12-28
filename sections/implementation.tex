@@ -20,7 +20,7 @@ within the cluster to provide a unified data management layer for the function
 system.
 
 \parabf{Scheduler.} The scheduler in the prototype consists of four modules.
-i) The dispatching strategy generator runs as a periodic cluster-level service (currently every minute). It executes the complementary swarming dispatching algorithm to compute the optimal request dispatching map and provides this strategy to the request dispatcher.
-ii) The request dispatcher operates as a separate cluster-level process. It assigns each incoming request to a worker node by directly applying the current dispatching strategy received from the generator.
-iii) The worker scheduler runs locally on each worker node. It maintains per-function task queues, enforces the monotonic scale-up scheduling policy to determine execution order, and triggers in-place pod scaling when required.
+i) The dispatching plan generator runs as a periodic cluster-level service (currently every minute). It executes the complementary swarming dispatching algorithm to compute the optimized request dispatching plan, which is provided to the request dispatcher.
+ii) The request dispatcher operates as a separate cluster-level process. It assigns each incoming request to a worker node according to the current dispatching plan received from the generator.
+iii) The worker scheduler runs locally on each worker node. It maintains per-function request queues, enforces the monotonic scale-up scheduling policy to determine execution order, and triggers in-place pod scaling when required.
 iv) The system monitor collects real-time resource usage and per-function metrics (e.g., cold-start time, execution duration, resource demand distribution). For load prediction, it currently employs a basic FFT-based method implemented with the Python SciPy~library~\cite{scipy}.

@@ -221,7 +221,7 @@ to 75.45\%--78.98\%.
 This scaling trend can be attributed to the complementary swarming dispatching. With 
 fewer benchmarks, each node already operates on a limited set of functions, 
 leaving limited room for further optimization through instance reuse. In contrast, 
-when the workload is larger and more diverse, the strategy reduces the number of 
+when the workload is larger and more diverse, the dispatching reduces the number of 
 distinct functions each node handles. This effect elevates the instance reuse 
 rate, which in turn improves overall~efficiency.
 
@@ -264,12 +264,12 @@ adhering to the 80/20 rule implies that only two functions bear the majority of
 the workload, which naturally grants them more instance reuse opportunities. In 
 contrast, while the real-world workload distribution also exhibits skew, it 
 involves a larger number of high-load functions competing for node resources 
-simultaneously. This competition creates more optimization potential for the 
-\sysname strategy. Moreover, even with only two high-load functions, \sysname 
+simultaneously. This competition creates more optimization potential for 
+\sysname. Moreover, even with only two high-load functions, \sysname 
 still achieves around 20\%--30\% higher resource utilization and task throughput 
 than the baselines. This gain is primarily because the monotonic scale-up 
 scheduling policy reduces both instance resource over-provisioning and 
-cold-start frequency through task reordering, thereby enhancing overall 
+cold-start frequency through request reordering, thereby enhancing overall 
 resource~efficiency.
 
 \begin{figure}[t]
@@ -307,7 +307,7 @@ The resource utilization advantage of \sysname stems from the reduction in cold
 starts. This is achieved through two strategies. First, the complementary swarming 
 dispatching concentrates a narrower set of functions on each node, which 
 increases instance reuse opportunities. Second, the monotonic scale-up 
-scheduling policy reorders tasks and dynamically adjusts instance resources, 
+scheduling policy reorders requests and dynamically adjusts instance resources, 
 enabling instances to serve varying demands throughout their lifecycle without 
 repeated cold starts or static over-provisioning.
 
@@ -409,7 +409,7 @@ advantage stably at scale.
 \begin{figure}[t]
     \centering
     \includegraphics[width=0.97\linewidth]{figures/Eval/overhead_placement.pdf}
-    \caption{The average duration for \sysname to generate a dispatching strategy.}
+    \caption{The average duration for \sysname to generate a dispatching plan.}
     \label{fig:overhead_placement}
     \vspace{-10pt}
 \end{figure}
@@ -433,19 +433,19 @@ patterns, we generate invocations at a steady rate instead of using the trace
 from the Azure Functions Dataset~\cite{ShahradFGCBCLTR20}. The experimental results 
 are presented in Figures~\ref{fig:overhead_placement} and~\ref{fig:overhead_scheduling}. 
 
-Figure~\ref{fig:overhead_placement} shows the average duration for generating cluster-wide 
-request dispatching strategies under different cluster sizes. It can be observed 
+Figure~\ref{fig:overhead_placement} shows the average duration for \sysname to generate 
+cluster-wide request dispatching plans under different cluster sizes. It can be observed 
 that the generation duration increases gradually with cluster scale but 
 remains largely unaffected by invocation frequency. This is because \sysname scales 
 the overall load proportionally to the cluster size before computing the dispatching 
-strategy. Even with 1024 worker nodes and an invocation rate of $250 \times 10^3$ 
+plan. Even with 1024 worker nodes and an invocation rate of $250 \times 10^3$ 
 requests per minute, the latency stays below 110 ms. This result indicates that 
-the scheduler can generate dispatching strategies promptly, even in large-scale 
+the scheduler can generate dispatching plans promptly, even in large-scale 
 clusters, demonstrating the practical scalability of \sysname.
 
 Figure~\ref{fig:overhead_scheduling} shows the scheduling overhead for individual 
 task under different invocation frequencies. It should be noted that 
-dispatching strategy generation is performed by a separate background process within 
+dispatching plan generation is performed by a separate background process within 
 the scheduler. The main scheduling process only receives the resulting dispatching 
 plan and assigns tasks accordingly. Therefore, only the scheduling overhead 
 contributes to the additional latency introduced by \sysname in the end-to-end 

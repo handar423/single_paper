@@ -21,7 +21,7 @@ based on the function‘s resource profile and, when necessary, rolls back parti
 assignments of other already-placed functions to improve complementary packing. 
 For functions requiring distribution across multiple nodes, the algorithm performs 
 fine-grained load splitting according to the function resource demand distribution. 
-The algorithm outcome is a stable task-to-node mapping that balances complementary 
+The algorithm outcome is a stable request-to-node mapping that balances complementary 
 packing with equitable load distribution.
 
 \subsubsection{Modeling Node Capacity and Function Demand}
@@ -154,7 +154,7 @@ algorithm. It takes as input the set of nodes $\mathcal{N}$ with their capacity
 vectors $\mathbf{C}_j$, and the set of functions $\mathcal{F}$ with their demand 
 profiles $\langle r_i, \mathbf{V}_i, D_i \rangle$. The algorithm outputs a dispatching 
 map $\mathcal{P}: \mathcal{F} \times [0,1] \to \mathcal{N}$. This mapping 
-determines task dispatch: when a function's workload is split across multiple 
+determines request dispatch: when a function's workload is split across multiple 
 nodes, $\mathcal{P}$ assigns each percentile of the function's resource‑demand 
 distribution to a specific node. This percentile‑based splitting is illustrated 
 in Figure~\ref{fig:placement_p}.
@@ -221,7 +221,7 @@ intervals in $[0, 1]$ to each node $N_j$ that hosts $F_i$ (left side of the figu
 The length of the interval assigned to $N_j$ is exactly $L[j,i]$. This completes 
 the construction of $\mathcal{P}$, which is the algorithm’s final output. In 
 practice, to avoid resource fragmentation that could arise if certain nodes only 
-receive large tasks, the intervals are assigned to nodes in a randomized order 
+receive large requests, the intervals are assigned to nodes in a randomized order 
 rather than a fixed sequence; the figure omits this step for simplicity.
 
 \parabf{Request Dispatching.} At runtime, the interval $[0, 1]$ is concretely mapped 
@@ -358,43 +358,43 @@ thereby avoiding costly cold starts while maintaining high resource efficiency.
 
 As illustrated in Figure~\ref{fig:scheduler-arch}, the core scheduling structure 
 is organized per function. For each function $F_i$, the scheduler maintains two 
-monotonic task queues: a current queue and a backup queue. Tasks in both queues 
+monotonic request queues: a current queue and a backup queue. Requests in both queues 
 are ordered by their predicted resource demand in increasing order. This monotonic 
 ordering is the key to enabling efficient in‑place scaling: when an instance processes 
-tasks sequentially from a single queue, its resource allocation can be increased 
+requests sequentially from a single queue, its resource allocation can be increased 
 incrementally without~restarts.
 
-\parabf{Task‑insertion rule.} When a new request of $F_i$ arrives, its predicted 
-resource demand is compared with the demand of the head (smallest) task in the 
+\parabf{Request‑insertion rule.} When a new request of $F_i$ arrives, its predicted 
+resource demand is compared with the demand of the head (smallest) request in the 
 current queue. If the new demand is smaller, the request is placed into the 
 backup queue; otherwise, it is inserted into the current queue (preserving the 
 monotonic order). The purpose of this rule is not merely to keep each queue sorted, 
-but to guarantee that an instance, while processing tasks from a single current 
+but to guarantee that an instance, while processing requests from a single current 
 queue, encounters a resource demand sequence that is monotonically non‑decreasing. 
-This property is essential: if an instance were forced to run a larger task before 
+This property is essential: if an instance were forced to run a larger request before 
 a smaller one, it would either have to start at the higher capacity (wasting 
 resources) or be restarted after a down‑scale (incurring cold‑start overhead). 
-The backup queue temporarily holds smaller tasks until the current queue is 
+The backup queue temporarily holds smaller requests until the current queue is 
 fully processed, after which the roles of the two queues may swap.
 
 \parabf{Instance execution and priority‑based selection.} A function may have from 
-zero to multiple concurrent warm instances, each dedicated to fetching tasks only 
+zero to multiple concurrent warm instances, each dedicated to fetching requests only 
 from that function’s current queue. The scheduler assigns a dynamic priority to 
 each function (detailed in \S\ref{subsec:priority-design}). At every scheduling 
-point—triggered by a new request arrival or a task completion—the scheduler selects 
-the function with the highest priority and attempts to dispatch the head task of 
+point—triggered by a new request arrival or a request completion—the scheduler selects 
+the function with the highest priority and attempts to dispatch the head request of 
 its current queue.
 
-\parabf{Resource‑assignment policy.} To execute the selected task, the scheduler 
+\parabf{Resource‑assignment policy.} To execute the selected request, the scheduler 
 tries the following options in order, aiming to minimize overhead:
 
 \begin{enumerate}[label=\roman*)]
     \item \textbf{Reuse} an existing instance of the same function whose current 
-    resource allocation already meets or slightly exceeds the task’s demand, 
+    resource allocation already meets or slightly exceeds the request’s demand, 
     thereby avoiding any scaling~operation.
     
     \item \textbf{In‑place scaling} of a warm instance via restart‑free vertical 
-    scaling (Kubernetes Pod resize API) to accommodate the task, thus preserving 
+    scaling (Kubernetes Pod resize API) to accommodate the request, thus preserving 
     warm state.
 
     \item \textbf{Launch a new instance} (cold start) if no suitable warm instance 
@@ -412,14 +412,14 @@ the same function. Among instances of the same function, those with larger resou
 footprints are evicted first. This scheme encourages load spreading (by penalizing 
 functions that already hold many instances) and promotes fair resource sharing. 
 Eviction is performed only if it can actually release enough resources to execute 
-the pending task; otherwise, the scheduler leaves the system unchanged and waits 
+the pending request; otherwise, the scheduler leaves the system unchanged and waits 
 for the next scheduling event.
 
 \subsubsection{Priority Design}
 \label{subsec:priority-design}
 
 The scheduler assigns a dynamic priority to each function $F_i$ to balance three 
-objectives: minimizing cold‑start overhead, preventing task starvation, and 
+objectives: minimizing cold‑start overhead, preventing request starvation, and 
 maximizing the utility of in‑place scaling. The priority is computed as a 
 weighted sum of three factors derived from the state of $F_i$’s~queues:
 \[
@@ -432,7 +432,7 @@ The three factors are defined as follows:
 
 \begin{itemize}
     \item \textbf{Cold‑start cost factor} ($\text{factor}_1$).  
-    Let $t_{\text{last}}$ be the task with the largest predicted resource demand 
+    Let $t_{\text{last}}$ be the request with the largest predicted resource demand 
     in $F_i$’s current queue, and let $C_{\text{cold}}(F_i)$ denote the estimated 
     cold‑start cost of $F_i$ (\emph{i.e.}, the time overhead of launching a new 
     instance). Then
@@ -441,15 +441,15 @@ The three factors are defined as follows:
     \]
     where $C_j^{\text{mem}}$ and $C_j^{\text{cpu}}$ are the memory and CPU 
     capacities of the worker node $N_j$ on which the scheduler is running. This 
-    factor increases when the largest pending task occupies a large fraction of 
+    factor increases when the largest pending request occupies a large fraction of 
     the node’s resources and the function itself is expensive to cold‑start. It 
-    encourages the scheduler to keep executing $F_i$’s tasks consecutively, 
+    encourages the scheduler to keep executing $F_i$’s requests consecutively, 
     thereby raising the chance of reusing a warm instance.
 
     \item \textbf{Starvation‑avoidance factor} ($\text{factor}_2$).  
-    Let $W_{\max}$ be the longest waiting time among all pending tasks of $F_i$,
-    and let $\overline{T}(F_i)$ be the average execution duration of $F_i$ tasks. 
-    The starvation factor is zero if no task has been waiting excessively; otherwise 
+    Let $W_{\max}$ be the longest waiting time among all pending requests of $F_i$,
+    and let $\overline{T}(F_i)$ be the average execution duration of $F_i$ requests. 
+    The starvation factor is zero if no request has been waiting excessively; otherwise 
     it grows with the cumulative waiting time and the total work left in the~queue:
     \[
     \text{factor}_2 = 
@@ -458,12 +458,12 @@ The three factors are defined as follows:
     \overline{T}(F_i) \cdot |Q_i| + W_{\max}, & \text{otherwise}.
     \end{cases}
     \]
-    Here $|Q_i|$ is the total number of tasks in $F_i$’s current queue. This 
-    mechanism ensures that a function whose tasks have been waiting too long 
+    Here $|Q_i|$ is the total number of requests in $F_i$’s current queue. This 
+    mechanism ensures that a function whose requests have been waiting too long 
     receives a priority boost, preventing indefinite starvation.
 
     \item \textbf{Scaling‑efficiency factor} ($\text{factor}_3$).  
-    Let $t_{\text{first}}$ and $t_{\text{last}}$ be the tasks with the smallest 
+    Let $t_{\text{first}}$ and $t_{\text{last}}$ be the requests with the smallest 
     and largest predicted resource demands in $F_i$ current queue, respectively. 
     Under the assumption that all request of the same function share the same 
     CPU‑to‑memory ratio (see \S\ref{subsec:modeling}), the ratio can be computed 
@@ -473,7 +473,7 @@ The three factors are defined as follows:
     \]
     A large ratio (close to $1$) indicates that the queue’s resource‑demand range 
     is narrow; consequently, an instance that starts with $t_{\text{first}}$ will 
-    require little additional scaling to process the remaining tasks. A small 
+    require little additional scaling to process the remaining requests. A small 
     ratio (\emph{i.e.}, a wide demand spread) implies that abandoning the current 
     queue would incur less “waste” of scaling effort, which is reflected by the 
     negative weight $\omega_3$.
