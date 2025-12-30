@@ -4,8 +4,8 @@
 \vspace{-3pt}
 
 In this section, we first evaluate the overall performance of \sysname against 
-state-of-the-art systems—Palette~\cite{abdi2023palette} and 
-FaaSCache~\cite{FaaSCache}—in \S\ref{sec:experiments_comparsion}. Next, 
+state-of-the-art systems\textemdash Palette~\cite{abdi2023palette} and 
+FaaSCache~\cite{FaaSCache}\textemdash in \S\ref{sec:experiments_comparsion}. Next, 
 we conduct an in-depth analysis of the effectiveness of the key techniques 
 employed in \sysname in \S\ref{sec:experiments_technique}. Finally, we investigate 
 the scalability of \sysname in large-scale cluster environments in \S\ref{sec:experiments_overhead}.
@@ -44,8 +44,8 @@ We selected ten benchmark applications from a recent open-source serverless
 benchmarking suite~\cite{copik2021sebs, benchmark_10} to evaluate the performance 
 of \sysname across diverse workloads. Table~\ref{tab:setup} summarizes the basic 
 distribution and resource profiles of these benchmarks. The selected benchmarks 
-span multiple categories—including Web Apps, Multimedia, Utilities, Machine Learning, 
-and Scientific Computing—and exhibit substantial variation in resource requirements. 
+span multiple categories\textemdash including Web Apps, Multimedia, Utilities, Machine Learning, 
+and Scientific Computing\textemdash and exhibit substantial variation in resource requirements. 
 As shown in the table, their memory consumption ranges from 1--4 GB, CPU usage 
 from 0.5--4 cores, and execution time from 0.15--21.5 seconds. Crucially, the 
 CPU-to-memory ratio (shown in the table) varies widely from 0.25 to 1.50 cores/GB, 
@@ -248,8 +248,8 @@ of a Zipf distribution (with n = 10) to obtain a probability set that approximat
 the Pareto principle (\emph{i.e.}, the 80/20 rule), where the sum of the two largest 
 probabilities is about 0.8. We then scale the invocation rate of each benchmark 
 according to this distribution, preserving the total aggregate invocation frequency 
-while ensuring that the two most frequently invoked functions—randomly chosen as 
-\textbf{thumbnailer} and \textbf{video-processing}—collectively account for 80\% 
+while ensuring that the two most frequently invoked functions\textemdash randomly chosen as 
+\textbf{thumbnailer} and \textbf{video-processing}\textemdash collectively account for 80\% 
 of all invocations.
 
 It can be observed from Figure~\ref{fig:eval_workload} that, compared to the default 

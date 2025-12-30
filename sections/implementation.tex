@@ -11,7 +11,7 @@ via a unique Pod IP address, which the scheduler maintains in a pod-IP mapping
 table. Container resource limits and instance placement are enforced through 
 Kubernetes Pod specifications and node-affinity rules, respectively. In the 
 prototype, the scheduler must manage a large number of instances and frequently 
-interact with each one to perform lifecycle operations—including startup, access, 
+interact with each one to perform lifecycle operations\textemdash including startup, access, 
 scaling, termination, and health monitoring. To reduce control-plane overhead, 
 our implementation leverages the Python Kubernetes client library in a multi-process 
 and multi-coroutine architecture. Since some benchmarks require reading from and 
