@@ -13,10 +13,11 @@ the scalability of \sysname in large-scale cluster environments in \S\ref{sec:ex
 \begin{table*}[t]
     \vspace{-10pt}
     \caption{Benchmark characteristics: resource profiles and execution times.\label{tab:setup}}
+    \vspace{-3pt}
     \centering
     \begin{tabular}{r c c c c c c}
         \toprule
-        \textbf{Workload} & \textbf{Type} & \makecell[c]{\textbf{CPU} \\ \textbf{(cores)}} & \makecell[c]{\textbf{Duration} \\ \textbf{(s)}} & \makecell[c]{\textbf{Mem} \\ \textbf{(GB)}} & \makecell[c]{\textbf{CPU/Mem} \\ \textbf{(core/GB)}} & \textbf{Description} \\
+        \textbf{Workload} & \textbf{Type} & \makecell[c]{\textbf{CPU} \\ \textbf{(cores)}}  & \makecell[c]{\textbf{Mem} \\ \textbf{(GB)}} & \makecell[c]{\textbf{Duration} \\ \textbf{(s)}} & \makecell[c]{\textbf{CPU/Mem} \\ \textbf{(core/GB)}} & \textbf{Description} \\
         \midrule
         graph-bfs      & Scientific     & 1.5 & 1.0 & 3.0 & 1.50 & Breadth-first search traversal implemented using igraph. \\
         graph-mst      & Scientific     & 1.5 & 1.0 & 4.2 & 1.50 & Computing minimum spanning tree using igraph. \\
@@ -29,11 +30,13 @@ the scalability of \sysname in large-scale cluster environments in \S\ref{sec:ex
         thumbnailer    & Multimedia     & 0.5 & 2.0 & 5.0 & 0.25 & Creating thumbnail images from input pictures. \\
         video-processing & Multimedia   & 1.5 & 4.0 & 11.0 & 0.38 & Adding watermarks and generating GIFs from video files. \\
         \bottomrule
-        \vspace{-15pt}
+        \vspace{-20pt}
     \end{tabular}
 \end{table*}
 
+\vspace{-5pt}
 \subsection{Evaluation Setup}
+\vspace{-5pt}
 \label{sec:experiments_setup}
 
 \parabf{Benchmarks.}
@@ -43,7 +46,7 @@ of \sysname across diverse workloads. Table~\ref{tab:setup} summarizes the basic
 distribution and resource profiles of these benchmarks. The selected benchmarks 
 span multiple categories—including Web Apps, Multimedia, Utilities, Machine Learning, 
 and Scientific Computing—and exhibit substantial variation in resource requirements. 
-As shown in the table, their memory consumption ranges from 0.5--4 GB, CPU usage 
+As shown in the table, their memory consumption ranges from 1--4 GB, CPU usage 
 from 0.5--4 cores, and execution time from 0.15--21.5 seconds. Crucially, the 
 CPU-to-memory ratio (shown in the table) varies widely from 0.25 to 1.50 cores/GB, 
 highlighting the spectrum from memory-intensive (\emph{e.g.}, thumbnailer) to 
@@ -60,9 +63,7 @@ and the invocation frequencies across the ten benchmarks are adjusted to be near
 identical, with relative differences under 2\%. Given that the original trace 
 data is recorded at minute-level granularity, intra-minute request arrivals are 
 modeled as a Poisson process, a standard approach for independent random events 
-in systems and performance analysis~\cite{Gallager2013Stochastic}. Following common 
-industrial practice~\cite{aws_scaling_window, knative_scaling_window}, the scaling 
-interval is set to one minute.
+in systems and performance~analysis~\cite{Gallager2013Stochastic}. 
 
 To accurately model real-world serverless functions, we first analyze 
 the resource usage distribution in the Azure Functions dataset~\cite{ShahradFGCBCLTR20}. 
@@ -93,19 +94,18 @@ a unique color, and functions with the same color are co-located on the same ser
 to enhance spatial locality. Inspired by caching systems, FaaSCache employs a 
 Greedy-Dual keep-alive strategy, which assigns a priority to each kept-alive 
 instance and evicts low-priority instances first under resource pressure. To 
-ensure a fair comparison and minimize the impact of engineering artifacts, we 
-reimplement both baselines in our prototype environment. Furthermore, while 
-maintaining controlled conditions, we enable Kubernetes pod in-place scaling 
-across all systems during evaluation (see prototype implementation details in 
-Section~\ref{sec:implementation}).
+ensure fair comparison and minimize engineering artifacts, we reimplement both 
+baselines in our prototype environment. Other components of the prototype system 
+are kept identical across all evaluated systems.
 
 \parabf{Metric.} We evaluate system performance using CPU/memory utilization 
 and task throughput as primary metrics. To verify that the scheduling algorithm 
 in \sysname does not lead to task starvation, we also compare the 95th percentile 
 tail latency of task processing. Each data point is collected from a one-hour 
-test run, with the performance data from the first five minutes excluded to 
-eliminate the impact of initial cold starts.
+test run, with the first five minutes of data excluded to eliminate the impact 
+of initial cold starts.
 
+\vspace{-5pt}
 \subsection{Benefits of \sysname}
 \label{sec:experiments_comparsion}
 
@@ -143,7 +143,7 @@ and 41.41\%--67.01\% over the baselines, respectively. Furthermore, \sysname
 demonstrates performance gains in task throughput, with improvements ranging from 
 51.52\% to 103.71\%.
 
-To address the potential concern of task starvation, we examine the impact on 
+To verify the potential concern of task starvation, we examine the impact on 
 end-to-end performance. As shown in Table~\ref{tab:latency}, \sysname reduces 
 the overall 95th percentile latency by 30.63\%--42.42\% compared to the baselines. 
 This result indicates that the efficiency gains of \sysname are not achieved by 
@@ -153,7 +153,7 @@ predictable end-to-end performance, even when co-locating diverse benchmarks wit
 varying resource demands and execution characteristics.
 
 The performance gains of \sysname are primarily attributed to two mechanisms. 
-First, the complementary swarming request routing strategy enables individual 
+First, the complementary swarming request routing enables individual 
 nodes to serve fewer functions, thereby increasing instance reuse probability. 
 This approach also aligns node workload with resource capacity, avoiding resource 
 waste caused by load-resource mismatch. Second, the monotonic scale-up 
@@ -161,8 +161,8 @@ scheduling policy reduces both resource over-provisioning and cold-start frequen
 further boosting overall resource utilization.
 
 \begin{table}[t]
-    \vspace{-10pt}
-    \caption{Performance comparison under multiple workflows.\label{tab:latency}}
+    \vspace{-5pt}
+    \caption{Tail latency comparison between \sysname and baselines.\label{tab:latency}}
     \begin{tabularx}{0.47\textwidth}{ 
         >{\raggedright\arraybackslash}X 
         >{\centering\arraybackslash}X
@@ -236,13 +236,13 @@ rate, which in turn improves overall~efficiency.
     \subfloat[]{\includegraphics[width=0.32\linewidth]{figures/Eval/skew_Task throughput.pdf}%
     \label{fig:eval_workload_throughput}}
     \caption{Performance comparison under different workload distributions. (a) CPU Utilization. (b) Memory Utilization. (c) Task throughput.}
-    \vspace{-15pt}
+    \vspace{-10pt}
 \label{fig:eval_workload}
 \end{figure*}
 
 \parabf{Comparison under different workload distributions.} 
 Finally, we examine the impact of workload distribution on scheduling performance. 
-In addition to the default resource distribution (see~\ref{sec:experiments_setup}), 
+In addition to the default resource distribution, 
 we introduce a Zipf-based load pattern. Specifically, we adjust the $\alpha$ parameter 
 of a Zipf distribution (with n = 10) to obtain a probability set that approximates 
 the Pareto principle (\emph{i.e.}, the 80/20 rule), where the sum of the two largest 
@@ -258,7 +258,6 @@ distribution is relatively smaller. Under the Zipf distribution, \sysname achiev
 an increase in CPU utilization of 23.20\%--23.58\%, memory utilization of 
 27.04\%--28.50\%, and task throughput of 29.20\%--31.34\% over the~baselines.
 
-\looseness=-1
 This result stems from our experimental configuration: the Zipf distribution 
 adhering to the 80/20 rule implies that only two functions bear the majority of 
 the workload, which naturally grants them more instance reuse opportunities. In 
@@ -269,14 +268,14 @@ simultaneously. This competition creates more optimization potential for
 still achieves around 20\%--30\% higher resource utilization and task throughput 
 than the baselines. This gain is primarily because the monotonic scale-up 
 scheduling policy reduces both instance resource over-provisioning and 
-cold-start frequency through request reordering, thereby enhancing overall 
-resource~efficiency.
+cold-start frequency.
 
 \begin{figure}[t]
     \centering
     \subfloat[]{\includegraphics[width=0.9\linewidth]{figures/Eval/detail_cpu.pdf}%
     \label{fig:eval_detail_cpu}}
     \hfil
+    \vspace{-7pt}
     \subfloat[]{\includegraphics[width=0.9\linewidth]{figures/Eval/detail_memory.pdf}%
     \label{fig:eval_detail_memory}}
     \caption{Detail Resource Comsupmtion of \sysname and baselines. (a) CPU Detail Comsupmtion. (b) Memory Detail Comsupmtion.}
@@ -284,11 +283,12 @@ resource~efficiency.
 \label{fig:eval_detail}
 \end{figure}
 
-\parabf{Performance analysis.} To further demonstrate the reasons for \sysname 
+\parabf{Performance analysis.} To further illustrate the reasons behind \sysname's 
 performance advantage, Figure~\ref{fig:eval_detail} provides a detailed 
 illustration of the average resource consumption of \sysname and the baselines 
-during task processing. We categorize CPU and memory resources into the following 
-four~types: 
+during task processing in the default evaluation setting. We categorize CPU and 
+memory resources into the following 
+four types: 
 
 \begin{itemize}
     \item \textbf{Task Execution}: resources allocated for processing tasks;
@@ -311,37 +311,36 @@ scheduling policy reorders requests and dynamically adjusts instance resources,
 enabling instances to serve varying demands throughout their lifecycle without 
 repeated cold starts or static over-provisioning.
 
-The resources conserved from fewer cold starts are reallocated in two ways: they 
-increase the share for task execution while expanding the pool of standby instances. 
-Consequently, a larger ready-to-use instance pool is maintained, raising the 
-probability of warm starts.
+The resources conserved from fewer cold starts not only increase the share for 
+task execution but also expand the pool of idle resources and standby instances, 
+facilitating container reuse and in-place scaling.
+
+{
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=0.97\linewidth]{figures/Eval/workflow_xiaorong.pdf}
+    \caption{Performance comparison among \sysname, baselines and simplified variants.}
+    \label{fig:technique}
+    \vspace{-15pt}
+\end{figure}
+}
 
 \subsection{Effectiveness of \sysname}
 \label{sec:experiments_technique}
 
 In this section, we investigate the impact of the techniques employed by 
-\sysname. We evaluate \sysname using the following two simplified versions:
+\sysname. We evaluate \sysname using the following two simplified variants:
 \begin{itemize}
     \item \textbf{Routing*}: This variant uses only the complementary swarming 
     request routing strategy, while tasks within each node are scheduled using 
     a simple FIFO policy.
     \item \textbf{Scheduling*}: This variant uses only the monotonic scale-up 
     scheduling policy within each node, while user requests are randomly 
-    assigned across worker nodes.
+    routed across worker nodes.
 \end{itemize}
 
-{
-\begin{figure}[t]
-    \centering
-    \includegraphics[width=0.97\linewidth]{figures/Eval/workflow_xiaorong.pdf}
-    \caption{Performance comparison between \sysname, baselines and simplified versions.}
-    \label{fig:technique}
-    \vspace{-15pt}
-\end{figure}
-}
-
 Figure~\ref{fig:technique} shows the performance comparison between \sysname and 
-simplified versions. We also provide the evaluation results of the baselines for 
+simplified variants. We also provide the evaluation results of the baselines for 
 reference.
 
 As shown, the performance of the Routing* version lies between the baselines 
@@ -349,10 +348,9 @@ and \sysname. Compared to the baselines, it achieves improvements of 20.07\%--21
 16.90\%--17.23\%, and 17.31\%--15.74\% in CPU utilization, memory utilization, 
 and task throughput, respectively. However, it still falls short of \sysname by 
 16.39\%, 17.33\%, and 23.62\% in the metrics. These results demonstrate that the 
-complementary swarming routing strategy alone can effectively enhance 
-scheduling performance through load partitioning. Furthermore, it requires integration 
-with the monotonic scale-up scheduling policy for fine-grained, 
-node-internal resource management to achieve optimal performance.
+complementary swarming routing strategy alone can effectively enhance performance. 
+Furthermore, it requires integration with the monotonic scale-up scheduling policy 
+for fine-grained, node-internal resource management to achieve better scheduling efficiency.
 
 The performance of the Scheduling* variant reveals a more nuanced trade-off. It 
 underperforms \sysname in resource utilization, with CPU and memory utilization 
@@ -361,24 +359,16 @@ higher task throughput. This discrepancy occurs because Scheduling* prioritizes
 tasks with lower resource demands, shorter execution times, and higher  
 frequencies, without explicitly optimizing for overall server utilization.
 
-When integrated with the complementary swarming routing strategy 
-(as in \sysname), each node handles a limited, resource-complementary set of 
-functions. This increases the likelihood that tasks with high resource demands 
-are selected for instance setup and execution, raising the execution priority for 
-subsequent tasks from the same function (see Section~\ref{subsec:priority-design}). In 
-contrast, without effective load partitioning, a wider variety of instances compete 
-for node resources. In this scenario, resource-intensive instances are served 
-mainly through starvation-avoidance mechanisms, receiving only limited execution 
-opportunities. The resulting contention leads to frequent instance eviction and 
-cold starts, which hinders effective improvement in resource utilization.
-
-\subsection{Scalability}
-\label{sec:experiments_overhead}
-
-Finally, we evaluate the scalability of \sysname. Due to testbed limitations, 
-this section includes both real and simulated experiments. We first demonstrate 
-the performance of \sysname on a larger-scale cluster. Then we
-show the system overhead of the \sysname scheduler on up to 1024 nodes.
+When integrated with the complementary swarming routing strategy (as in \sysname), 
+each node handles a limited set of functions whose resource profiles complement 
+each other. This increases the likelihood that high-resource-demand tasks are 
+selected for instance setup and execution, which in turn raises the execution 
+priority for subsequent requests of the same function (see Section~\ref{subsec:priority-design}). 
+In contrast, without effective load partitioning, a wider variety of instances 
+compete for node resources. In this scenario, resource-intensive instances rely 
+mainly on starvation-avoidance mechanisms and receive only limited execution 
+opportunities. As a result, frequent instance eviction and cold starts occur, 
+which hinders overall resource~utilization.
 
 \begin{figure*}[t]
     \centering
@@ -395,6 +385,14 @@ show the system overhead of the \sysname scheduler on up to 1024 nodes.
 \label{fig:eval_big}
 \end{figure*}
 
+\subsection{Scalability}
+\label{sec:experiments_overhead}
+
+Finally, we evaluate the scalability of \sysname. Due to testbed limitations, 
+this section includes both real and simulated experiments. We first demonstrate 
+the performance of \sysname on a larger-scale cluster. Then we
+show the system overhead of the \sysname scheduler on up to 1024 nodes.
+
 \parabf{Larger-scale cluster experiment.}
 In the larger-scale cluster experiment, we increased the number of worker nodes 
 to 16 and proportionally scaled the invocation frequency, while keeping 
@@ -409,6 +407,7 @@ advantage consistently at scale.
 \begin{figure}[t]
     \centering
     \includegraphics[width=0.97\linewidth]{figures/Eval/overhead_placement.pdf}
+    \vspace{-10pt}
     \caption{The average duration for \sysname to generate a routing plan.}
     \label{fig:overhead_placement}
     \vspace{-10pt}
@@ -417,39 +416,40 @@ advantage consistently at scale.
 
 \parabf{System overhead.}
 We next evaluate the overhead of the \sysname scheduler under varying cluster 
-sizes and invocation frequencies. To do so, we simulate scheduler load for clusters 
+sizes and user traffic. To do so, we simulate scheduler load for clusters 
 ranging from 64 to 1024 worker nodes. To avoid interference from bursty traffic 
-patterns, we generate invocations at a steady rate instead of using the trace 
-from the Azure Functions Dataset~\cite{ShahradFGCBCLTR20}. The experimental results 
+patterns, we generate invocations at a steady rate instead of using a real-world 
+trace. The experimental results 
 are presented in Figures~\ref{fig:overhead_placement} and~\ref{fig:overhead_scheduling}. 
 
 Figure~\ref{fig:overhead_placement} shows the average duration for \sysname to generate 
-cluster-wide request routing plans under different cluster sizes. It can be observed 
+cluster-wide request routing plans. It can be observed 
 that the generation duration increases gradually with cluster scale but 
 remains largely unaffected by invocation frequency. This is because \sysname scales 
 the overall load proportionally to the cluster size before computing the routing 
 plan. Even with 1024 worker nodes and an invocation rate of $250 \times 10^3$ 
 requests per minute, the latency stays below 110 ms. This result indicates that 
 the scheduler can generate routing plans promptly, even in large-scale 
-clusters, demonstrating the practical scalability of~\sysname.
+clusters, demonstrating the practical scalability~of~\sysname.
+
+Figure~\ref{fig:overhead_scheduling} shows the scheduling overhead for individual 
+tasks under different scenarios. It should be noted that 
+routing plan generation is performed by a separate background process within 
+the scheduler. The main scheduling process only receives the resulting routing 
+plan and assigns tasks accordingly. Therefore, only the scheduling overhead 
+contributes to the additional latency in the end-to-end 
+task execution path. As shown, even under a heavy load of 1024 worker nodes, the 
+extra scheduling delay added by \sysname remains below 10 ms. This overhead is 
+negligible for the vast majority of FaaS scenarios, confirming that the scheduling 
+logic of \sysname is lightweight enough for production-scale~deployment.
 
 {
 \begin{figure}[t]
     \centering
     \includegraphics[width=0.97\linewidth]{figures/Eval/overhead_scheduling.pdf}
+    \vspace{-10pt}
     \caption{The average scheduling overhead of \sysname.}
     \label{fig:overhead_scheduling}
-    \vspace{-10pt}
+    \vspace{-15pt}
 \end{figure}
 }
-
-Figure~\ref{fig:overhead_scheduling} shows the scheduling overhead for individual 
-tasks under different invocation frequencies. It should be noted that 
-routing plan generation is performed by a separate background process within 
-the scheduler. The main scheduling process only receives the resulting routing 
-plan and assigns tasks accordingly. Therefore, only the scheduling overhead 
-contributes to the additional latency introduced by \sysname in the end-to-end 
-task execution path. As shown, even under a heavy load of 1024 worker nodes, the 
-extra scheduling delay added by \sysname remains below 10 ms. This overhead is 
-negligible for the vast majority of FaaS scenarios, confirming that the scheduling 
-logic of \sysname is lightweight enough for production-scale deployment.

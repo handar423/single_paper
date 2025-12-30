@@ -7,7 +7,7 @@ inter-node level and monotonic scale-up request scheduling at the intra-node lev
 \subsection{Complementary Swarming Request Routing}
 \label{sec:design:placement}
 
-The complementary swarming routing algorithm addresses the scheduling challenge 
+The complementary swarming routing algorithm addresses the inter-node resource fragmentation 
 posed by heterogeneous function resource demands, as quantified in 
 \S\ref{sec:background:demand-analysis}. It pursues a dual objective: i) maximizing 
 cluster-wide resource utilization by co-locating functions with complementary CPU 
@@ -20,7 +20,7 @@ assignments of other already-placed functions to improve complementary packing.
 For functions requiring distribution across multiple nodes, the algorithm performs 
 fine-grained load splitting according to the function resource demand distribution. 
 The algorithm outcome is a stable request-to-node mapping that balances complementary 
-packing with equitable load distribution.
+packing with demand-aware load~distribution.
 
 \subsubsection{Modeling Node Capacity and Function Demand}
 \label{subsec:modeling}
@@ -28,24 +28,18 @@ packing with equitable load distribution.
 A precise formulation of the routing problem requires clear representations of 
 both node resource capacity and function resource demand.
 
-\textbf{Node Resource Capacity.} We model a worker node $N_j$’s available capacity 
-as a two-dimensional resource vector $\mathbf{C}_j = \left(C_j^{\text{cpu}}, C_j^{\text{mem}}\right)$, 
-representing its spare CPU cores and memory (in GB). Similarly, we denote by 
+\textbf{Node Resource Capacity.} We model a worker node $N_j$'s resource capacity 
+as a two-dimensional vector $\mathbf{C}_j = \left(C_j^{\text{cpu}}, C_j^{\text{mem}}\right)$, 
+representing its CPU cores and memory (in GB). Similarly, we denote by 
 $\mathbf{C}_j^{\text{idle}} = \left(C_j^{idle,cpu}, C_j^{idle,mem}\right)$ the 
-vector of idle (currently unallocated) resources on $N_j$ at any given moment. 
-For simplicity and clarity of exposition, we focus on CPU and memory as the 
-primary bottleneck resources. Our algorithm can be extended to incorporate other 
-resources (\emph{e.g.}, network bandwidth) by increasing the dimensionality of 
-the capacity vector. Furthermore, we define the \textbf{overall resource utilization} 
-of a node \(N_j\) as the sum of its normalized CPU and memory utilization:
+vector of idle resources on $N_j$ at any given moment. 
+For simplicity, we focus on CPU and memory as the primary bottleneck resources. 
+Our algorithm can be extended to incorporate other resources (\emph{e.g.}, network bandwidth) by expanding the resource vector. 
+We define the \textbf{overall resource utilization} of a node \(N_j\) as the sum of its CPU and memory utilization:
 \[
-U(N_j) = \frac{U_j^{\text{cpu}}}{C_{\text{total}}^{\text{cpu}}} + \frac{U_j^{\text{mem}}}{C_{\text{total}}^{\text{mem}}}
+U(N_j) = \frac{C_j^{\text{cpu}} - C_j^{idle,cpu}}{C_j^{\text{cpu}}} + \frac{C_j^{\text{mem}} - C_j^{idle,mem}}{C_j^{\text{mem}}}
 \]
-where \(U_j^{\text{cpu}}\) and \(U_j^{\text{mem}}\) are the allocated resources 
-on \(N_j\), and \(C_{\text{total}}^{\text{cpu}}\) and \(C_{\text{total}}^{\text{mem}}\) 
-are the \textbf{total capacities of the entire cluster}. This definition inherently 
-balances both resource dimensions. An optimization step in the algorithm is considered 
-beneficial if it increases \(U(N_j)\).
+Here, we simply sum CPU and memory utilization because function demands will be standardized to eliminate weight differences between resources. An optimization step is considered beneficial if it increases \(U(N_j)\).
 
 \textbf{Function Resource Demand.} Modeling the resource demand of a function is 
 more nuanced. We characterize it along three orthogonal dimensions:
@@ -113,7 +107,7 @@ complementary routing and proportional workload distribution simultaneously.
             \State $(\alpha_j^{\text{swap}},\; \mathcal{E}_j) \gets \text{SwapCapacity}(F_a, N_j, \mathbf{L}, \mathbf{C}_j^{idle})$
             \Comment{$\mathcal{E}_j$: list of $(F_k, \beta_k)$ evicted}
             \State $\alpha_j^{\text{max}} \gets min(\alpha_j^{\text{free}} + \alpha_j^{\text{swap}}, R[a])$
-            \State $\Delta U_j \gets \text{UtilGain}(F_a, \alpha_j^{\text{swap}}, \mathcal{E}_j, \mathbf{C}_j, \mathbf{C}_{\text{total}})$
+            \State $\Delta U_j \gets \text{UtilGain}(F_a, \alpha_j^{\text{max}}, \mathcal{E}_j, \mathbf{C}_j)$
         \EndFor
 
         \State \textbf{// Decision \& Assignment (ignoring edge cases)}
@@ -130,7 +124,7 @@ complementary routing and proportional workload distribution simultaneously.
     \State \textbf{// Step 3: Generate $\mathcal{P}$ from $L$}
     \For{$F_i \in \mathcal{F}$}
         \State $p_{\text{start}} \gets 0.0$ \Comment To store workload percentile range
-        \For{$N_j \in \mathcal{N}$, where $L[j,i] > 0$, in arbitrary order}
+        \For{$N_j \in \mathcal{N}$, where $L[j,i] > 0$, in random order}
             \State // We use half‑open intervals $[p_s, p_e)$, except the last interval which is closed at $1$.
             \State $\mathcal{P}(F_i, [p_{\text{start}}, p_{\text{start}} + L[j,i])) \gets N_j$ 
             \State $p_{\text{start}} \gets p_{\text{start}} + L[j,i]$
@@ -147,15 +141,16 @@ complementary routing and proportional workload distribution simultaneously.
 \subsubsection{Complementary Swarming Routing Algorithm}
 \label{subsec:placement-algorithm}
 
+\looseness=-1
 Algorithm~\ref{alg:placement} presents the complementary swarming routing 
-algorithm. It takes as input the set of nodes $\mathcal{N}$ with their capacity 
+workflow. It takes as input the set of nodes $\mathcal{N}$ with their capacity 
 vectors $\mathbf{C}_j$, and the set of functions $\mathcal{F}$ with their demand 
 profiles $\langle r_i, \mathbf{V}_i, D_i \rangle$. The algorithm outputs a routing 
 map $\mathcal{P}: \mathcal{F} \times [0,1] \to \mathcal{N}$. This mapping 
-determines request routing rule: when a function's workload is split across multiple 
-nodes, $\mathcal{P}$ assigns each percentile of the function's resource‑demand 
-distribution to a specific node. This percentile‑based splitting is illustrated 
-in Figure~\ref{fig:placement_p}.
+determines the request routing rule: when the workload of function $F_i$ is split 
+across multiple nodes, $\mathcal{P}$ assigns each request from $F_i$ to a specific 
+node based on the request's percentile in the function demand distribution $D_i$. 
+This percentile-based splitting is illustrated in Figure \ref{fig:placement_p}.
 
 {
 \begin{figure}[t]
@@ -171,10 +166,10 @@ in Figure~\ref{fig:placement_p}.
 \textbf{Step 1: Initialization \& Demand Normalization.}
 The algorithm maintains two key data structures initialized in this step: i) a 
 pending assignment vector $\mathbf{R}$, where $R[i]$ denotes the fraction of 
-$F_i$ demand yet to be placed, initialized to $1$ for all functions; and ii) an 
+$F_i$ demand yet to be assigned, initialized to $1$ for all functions; and ii) an 
 assignment matrix $\mathbf{L}$, where $L[j,i]$ records the fraction of $F_i$ 
 demand currently assigned to node $N_j$, initialized to all zeros (line~2). 
-Furthermore, we scales the demand vector $\mathbf{V}_i$ of each function 
+Furthermore, we scale the demand vector $\mathbf{V}_i$ of each function 
 proportionally so that the aggregate demand matches the total cluster capacity 
 ($\sum_i \mathbf{V}_i = \sum_j \mathbf{C}_j$). This normalization ensures the 
 subsequent routing operates under a balanced supply-demand premise~(Line~3--4). 
@@ -191,7 +186,7 @@ already-placed functions in order to host as much of $F_a$ demand as possible,
 provided that doing so improves the node utilization $U_j$ (Line~13, detailed 
 in Algorithm~\ref{alg:swap-capacity}). $\text{SwapCapacity}$ returns both the 
 maximum $F_a$ demand fraction $\alpha_j^{\text{swap}}$ that can be hosted by 
-function swaping, and a list $\mathcal{E}_j$ of evicted functions, each with the 
+function swapping, and a list $\mathcal{E}_j$ of evicted functions, each with the 
 evicted load fraction $\beta$. The total accommodation capacity for $F_a$ on 
 $N_j$ is then $\alpha_j^{\text{max}} = \min(\alpha_j^{\text{free}}+\alpha_j^{\text{swap}}, R[a])$~(Line~14).
 
@@ -202,7 +197,7 @@ updates $\mathbf{L}$ and $\mathbf{R}$ (Line~19), and simultaneously processes
 the evictions in $\mathcal{E}_j$: for each function $F_k$ in $\mathcal{E}_j$, 
 the algorithm reduces the evicted fraction $\beta_k$ in $\mathbf{L}[j, k]$ and 
 adds $\beta_k$ back to $F_k$ pending demand $\mathbf{R}[k]$ (Line~21). This process 
-continues until $F_a$ demand is fully placed ($R[a]=0$). Because the total 
+continues until $F_a$ demand is fully assigned ($R[a]=0$). Because the total 
 function demand was scaled to match the total cluster capacity in Step 1, it is 
 guaranteed that $F_a$ demand can eventually be fully accommodated, and the loop 
 will not terminate with $R[a] > 0$. To ensure the loop convergence speed, the 
@@ -293,7 +288,7 @@ of Algorithm~\ref{alg:placement}), only one resource dimension may remain idle (
 This determines the order in which existing functions are examined: if CPU is 
 idle, functions are sorted by their resource-demand ratio $r_k$ in ascending 
 order (\emph{i.e.}, more memory‑intensive functions first); if memory is idle, 
-they are sorted in descending order (more compute‑intensive first). This ordering 
+they are sorted in descending order (more compute‑intensive ones first). This ordering 
 ensures that the most beneficial candidates are tried first, because replacing 
 a function with a very complementary resource profile allows $F_a$ to consume 
 more of the idle resource.
@@ -306,16 +301,17 @@ $r_a > r_k$, meaning $F_a$ is more compute‑intensive than $F_k$ and will bette
 utilize the spare CPU; the converse holds when memory is idle. Candidates that 
 fail this test are skipped.
 
-Third, for a candidate that passes the test, the algorithm computes how much of $F_k$ can be evicted ($\beta_k$) without exceeding the node’s idle resources, and limits $\beta_k$ by the amount currently assigned to $N_j$ ($L[j,k]$) (lines~11--12). It then translates this evicted capacity into an equivalent amount of $F_a$ that can be hosted using the freed resources. The translation uses the formula $\gamma_k = \beta_k \cdot \min\left(\frac{V_k^{\text{cpu}}}{V_a^{\text{cpu}}}, \frac{V_k^{\text{mem}}}{V_a^{\text{mem}}}\right)$(line~13), which ensures that neither CPU nor memory exceeds the vacated capacity—the $\min$ operation enforces the tighter of the two resource constraints.
+Third, for a candidate that passes the test, the algorithm computes how much of $F_k$ can be evicted ($\beta_k$) without exceeding the node’s idle resources, and limits $\beta_k$ by the amount currently assigned to $N_j$ ($L[j,k]$) (lines~11--12). It then translates this evicted capacity into an equivalent amount of $F_a$ that can be hosted using the freed resources. The translation uses the formula $\gamma_k = \beta_k \cdot \min\left(\frac{V_k^{\text{cpu}}}{V_a^{\text{cpu}}}, \frac{V_k^{\text{mem}}}{V_a^{\text{mem}}}\right)$(line~13), which ensures that neither CPU nor memory exceeds the vacated~capacity.
 
 Finally, the algorithm accumulates the admissible fractions $\gamma_k$ until 
 either the pending demand $R[a]$ of $F_a$ is exhausted or no further beneficial 
 swaps can be found (lines~14--17). The accumulated total $\alpha^{\text{swap}}$ 
-and the corresponding eviction list $\mathcal{E}$ are returned to the main placement loop.
+and the corresponding eviction list $\mathcal{E}$ are returned to the main loop 
+in Algorithm~\ref{alg:placement}.
 
 \parabf{Low Overhead via Partial Updates.} To keep the scheduling overhead low, 
-the placement algorithm employs an incremental (partial) update mechanism. Rather 
-than recomputing the full placement from scratch for every scheduling window, the 
+the routing algorithm employs an incremental (partial) update mechanism. Rather 
+than recomputing the full routing plan from scratch for every scheduling window, the 
 system periodically (every minute in our implementation) monitors the latest 
 demand profiles $\langle r_i, \mathbf{V}_i, D_i \rangle$ of all functions. For 
 a function whose aggregate demand $\mathbf{V}_i$ has not increased and demand 
@@ -323,7 +319,7 @@ distribution $D_i$ remains statistically stable, the algorithm preserves its
 current placement. Only functions with significantly changed demand (increased 
 $\mathbf{V}_i$ or altered $D_i$) are fed into the complementary swarming algorithm 
 to update their assignments. This partial update drastically reduces the number 
-of functions that need to be re‑placed in each iteration, which in turn minimizes 
+of functions that need to be re‑routed in each iteration, which in turn minimizes 
 instance migration, thereby reducing scheduling churn and preserving warm instance 
 states. Furthermore, to prevent the accumulation of sub‑optimality that may arise 
 from multiple incremental updates, the system performs a global re‑placement 
@@ -336,15 +332,13 @@ state, ensuring long‑term placement quality.
 {
 \begin{figure}[t]
   \centering
-  \includegraphics[width=0.9\linewidth]{figures/design/scheduling.pdf}
+  \includegraphics[width=0.8\linewidth]{figures/design/scheduling.pdf}
   \vspace{-10pt}
   \caption{Monotonic acale-up scheduling workflow.}
-  \vspace{-10pt}
+  \vspace{-15pt}
   \label{fig:scheduler-arch}
 \end{figure}
 }
-
-\label{subsec:scheduler-structure}
 
 The monotonic scale‑up scheduler runs on each worker node. Its primary objective 
 is to handle the intra‑function demand variability identified in 
@@ -372,7 +366,7 @@ This property is essential: if an instance were forced to run a larger request b
 a smaller one, it would either have to start at the higher capacity (wasting 
 resources) or be restarted after a down‑scale (incurring cold‑start overhead). 
 The backup queue temporarily holds smaller requests until the current queue is 
-fully processed, after which the roles of the two queues may swap.
+fully processed, after which the two queues swap roles.
 
 \parabf{Instance execution and priority‑based selection.} A function may have from 
 zero to multiple concurrent warm instances, each dedicated to fetching requests only 
@@ -407,7 +401,7 @@ eviction priority computed~as:
 where \(N_{\text{instances}}\) is the number of active instances belonging to 
 the same function. Among instances of the same function, those with larger resource 
 footprints are evicted first. This scheme encourages load spreading (by penalizing 
-functions that already hold many instances) and promotes fair resource sharing. 
+functions that already hold many instances) and promotes balanced resource sharing. 
 Eviction is performed only if it can actually release enough resources to execute 
 the pending request; otherwise, the scheduler leaves the system unchanged and waits 
 for the next scheduling event.
@@ -424,7 +418,7 @@ weighted sum of three factors derived from the state of $F_i$’s~queues:
 \]
 
 where the weights $\omega_1, \omega_2 > 0$ and $\omega_3 < 0$ are tunable 
-parameters (set to $0.3$, $1.1$ and $-0.8$ respectively in our implementation). 
+parameters (set to $0.3$, $1.1$ and $0.8$ respectively in our implementation). 
 The three factors are defined as follows:
 
 \begin{itemize}
@@ -455,25 +449,20 @@ The three factors are defined as follows:
     \overline{T}(F_i) \cdot |Q_i| + W_{\max}, & \text{otherwise}.
     \end{cases}
     \]
-    Here $|Q_i|$ is the total number of requests in $F_i$’s current queue. This 
+    Here $|Q_i|$ is the total number of requests in $F_i$'s current queue. This 
     mechanism ensures that a function whose requests have been waiting too long 
     receives a priority boost, preventing indefinite starvation.
 
     \item \textbf{Scaling‑efficiency factor} ($\text{factor}_3$).  
     Let $t_{\text{first}}$ and $t_{\text{last}}$ be the requests with the smallest 
-    and largest predicted resource demands in $F_i$ current queue, respectively. 
+    and largest predicted resource demands in $F_i$'s current queue, respectively. 
     Under the assumption that all requests of the same function share the same 
     CPU‑to‑memory ratio (see \S\ref{subsec:modeling}), the ratio can be computed 
     using either dimension; we use memory for concreteness:
     \[
     \text{factor}_3 = \frac{t_{\text{first}}^{\text{mem}}}{t_{\text{last}}^{\text{mem}}}.
     \]
-    A large ratio (close to $1$) indicates that the queue’s resource‑demand range 
-    is narrow; consequently, an instance that starts with $t_{\text{first}}$ will 
-    require little additional scaling to process the remaining requests. A small 
-    ratio (\emph{i.e.}, a wide demand spread) implies that abandoning the current 
-    queue would incur less “waste” of scaling effort, which is reflected by the 
-    negative weight $\omega_3$.
+    A large ratio (close to 1) indicates that the queue’s resource-demand range is narrow; consequently, a current instance (if any) requires little or no additional scaling to process all requests in the current queue, resulting in low execution cost. A small ratio (i.e., a wide demand spread) implies that the current instance would need substantial or multiple scaling steps to process the entire queue, making it less beneficial to continue with the current instance.
 \end{itemize}
 
 Finally, to further promote instance reuse, the priority of any function that already possesses one or more warm instances is \textbf{doubled}. The combined priority is recomputed at every scheduling event, enabling the scheduler to adapt dynamically to changing workload patterns.

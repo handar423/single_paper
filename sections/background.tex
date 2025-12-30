@@ -1,29 +1,22 @@
+\vspace{-7pt}
 \section{Background and Motivation}
 \label{sec:background}
 
 \subsection{Resource Management of Serverless Computing}
 \label{sec:background:resource-management}
 
-% 1. serverless的资源管理模式: 静态资源分配管理
-% 把 resource allocation 分为两个步骤，一个是节点-level的资源分配，即运行时的核数和内存，另一个cluster-level的资源分配，即是函数容器副本扩缩容和放置，即决定副本数量、并将容器放置到具体的节点。
-
 Serverless computing has emerged as a promising cloud paradigm, allowing developers to focus on application logic by abstracting away infrastructure tasks such as provisioning, scaling, and maintenance. In this deployment model, users simply provide code (functions) with basic resource specifications and triggers. The platform then orchestrates the entire lifecycle\textemdash provisioning sandboxed environments, performing on-demand autoscaling, and managing pay-per-use billing. Consequently, efficient resource management is essential to ensure high performance, maximize utilization, and minimize costs for cloud platforms.
 
 In practice, resource management for a serverless computing cluster is architected along two orthogonal axes: i) vertical sizing, which defines the resource limits for function instances; and ii) horizontal orchestration, which governs autoscaling~(instance count) and placement~(node selection) of each function.
 
 \parabf{Instance resource allocation (vertical).}
-% 1) 静态的运行时资源配置：介绍 lambda 支持指定固定资源规格，及其对延迟和开销的影响，所以选取一个所有请求都不违背qos的配置
 Existing serverless computing systems from both industry~\cite{Doc:Azure_Functions_Hosting,
 Doc:GCP_CloudRun_Mem, Doc:AWS_Lambda_Mem} and academia~\cite{FaaSCache, ShahradFGCBCLTR20, wang2018peeking, pu2019shuffling}
 allocate a uniform amount of resources for all instances of a given function. In AWS Lambda, a developer specifies a memory size (\eg 128 MB--10,240 MB), from which the platform derives proportional vCPU and network bandwidth shares~\cite{Doc:AWS_Lambda_Mem}. 
-%Developers may also set ephemeral storage per instance (default 512 MB, configurable up to a few gigabytes). 
 These limits remain fixed throughout the instance lifetime. Similar static per-instance specifications are used by Azure Functions~\cite{Doc:Azure_Functions_Hosting} and Google Cloud Run~\cite{Doc:GCP_CloudRun_Mem}. This approach presumes uniform resource demand across function requests. Consequently, existing optimizations focus on profile-guided configuration tuning~\cite{aws_lambda_power_tuning,FaaSCache, ShahradFGCBCLTR20, zhang2024jolteon, JinZXZHLJ23}\textemdash by profiling across different configurations, they quantify the latency–cost trade-off and select the configuration with the minimum cost that satisfies a user-given SLO.
 
-
 \parabf{Instance scaling and placement (horizontal).}
-% 2）根据静态资源配置进行容器扩缩容放置：现有的 serverless 系统大多基于静态资源配置进行容器放置调度
-% 仅容器启动、离开时比较资源：只需维护节点已分配资源和未分配资源总计，任务到来时可以分配到未分配资源>静态请求资源的节点上，更新已分配资源、未分配资源，函数容器销毁时释放资源、更新已分配资源、未分配资源即可
-Existing serverless computing systems perform autoscaling and placement based on a static per-function resource requirement~\cite{aws_scaling_window, aws_scaling_eq, knative_scaling}. While autoscalers adjust instance counts in response to load, schedulers employ a simple resource accounting model where each node tracks allocated versus available capacity. The resource counters are updated only during lifecycle events\textemdash decremented upon placement and incremented upon termination\textemdash ignoring actual usage during execution. An instance is admitted to a node only if the available capacity meets the function’s static resource requirement (\eg memory, CPU). For instance autoscaling and placement, recent research has pursued two main optimizations: i) for autoscaling, using prediction to right-size replica counts and prewarm instances~\cite{ShahradFGCBCLTR20, ORION_MahgoubYSECB22}; and ii) for placement, improving efficiency through cache-aware~\cite{SOCK_OakesYZHHAA18}, heterogeneity-aware~\cite{RoyPT22}, and data-affinity strategies~\cite{Wukong_CarverZWAWC20, ORION_MahgoubYSECB22}.
+Existing serverless computing systems perform autoscaling and placement based on a static per-function resource requirement~\cite{aws_scaling_window, aws_scaling_eq, knative_scaling}. While autoscalers adjust instance counts in response to load, schedulers employ a resource accounting model where each node tracks allocated versus available capacity. The resource counters are updated only during lifecycle events\textemdash decremented upon placement and incremented upon termination\textemdash ignoring actual usage during execution. An instance is admitted to a node only if the available capacity meets the function's static requirement (\eg memory, CPU). For instance autoscaling and placement, recent research has pursued two main optimizations: i) for autoscaling, using prediction to right-size replica counts and prewarm instances~\cite{ShahradFGCBCLTR20, ORION_MahgoubYSECB22}; and ii) for placement, improving efficiency through cache-aware~\cite{SOCK_OakesYZHHAA18}, heterogeneity-aware~\cite{RoyPT22}, and data-affinity strategies~\cite{Wukong_CarverZWAWC20, ORION_MahgoubYSECB22}.
 
 Taken together, the prevailing serverless paradigm relies on modeling each function with a static, uniform resource profile. However, our characterization reveals that this static paradigm conflicts with a dual-layered heterogeneity in resource demands: diverse resource profiles across functions and varying demands within each function. In the next two subsections, we quantify these heterogeneities~(\S\ref{sec:background:demand-analysis}) and then analyze the system-level challenges that they pose to dynamic resource~allocation~(\S\ref{sec:background:challenges}).
 
@@ -40,17 +33,15 @@ Taken together, the prevailing serverless paradigm relies on modeling each funct
 \end{figure}
 
 % 1) 函数级别需求分布
-\parabf{Resource Usage Variation Across Functions.}
-The resource demands of serverless functions are highly heterogeneous. We quantify this heterogeneity by analyzing the execution traces of 162 real-world functions from the open-source Huawei dataset~\cite{huawei_dataset}, calculating the average CPU-to-memory ratio (core/GB) for each. Figure~\ref{fig:cpu_mem_ratio_hist} presents the distribution of these ratios across all functions.\footnote{The statistical results shown are from [Request Table Module, Region 4] part in dataset~\cite{huawei_dataset}. We observed similar distributions across different parts of the dataset.} The distribution is highly dispersed, with ratios ranging from 0.09 to 9.20 and a high CV of 62.43\%, indicating that some functions are extremely compute-intensive while others are predominantly memory-intensive. This substantial variation in intrinsic resource profiles implies that a resource allocation strategy that is unaware of such differences is prone to creating resource fragmentation.
+\parabf{Resource Demand Variation Across Functions.}
+The resource demands of serverless functions are highly heterogeneous. We quantify this heterogeneity by analyzing the execution traces of 162 real-world functions from the open-source Huawei dataset~\cite{huawei_dataset}, calculating the average CPU-to-memory ratio (core/GB) for each. Figure~\ref{fig:cpu_mem_ratio_hist} presents the distribution of these ratios across all functions.\footnote{The statistical results shown are from [Request Table Module, Region 4] part in dataset~\cite{huawei_dataset}. We observed similar distributions across different parts of the dataset.} The distribution is highly dispersed, with ratios ranging from 0.09 to 10.10 and a high CV of 62.43\%, indicating that some functions are extremely compute-intensive while others are predominantly memory-intensive. This substantial variation in intrinsic resource profiles implies that a resource allocation strategy that is unaware of such differences is prone to creating resource fragmentation.
 
 \parabf{Opportunity \#1: Heterogeneity-aware function placement.} The substantial dispersion in CPU-to-memory ratios across functions creates a significant opportunity to enhance cluster-wide resource efficiency through smarter placement. By leveraging the diverse resource profiles identified in our characterization, a scheduler can strategically co-locate functions with complementary demands\textemdash pairing compute-intensive workloads with memory-intensive ones. This complementary packing balances resource consumption along multiple dimensions at the node level, thereby minimizing fragmentation, maximizing aggregate utilization, and significantly increasing the effective capacity of the server fleet.
 
 % 2) 调用级别资源占用
-\parabf{Resource Usage Variation Across Requests.}
+\parabf{Resource Demand Variation Across Requests.}
 Resource demand also varies significantly across different requests of the same function. We compute the coefficient of variation (CV) for the CPU usage of each function across its request trace. The distribution of these CV values is presented in Figure~\ref{fig:usage_variation}. Our analysis shows that variability is the norm rather than the exception: for 54\% of functions, the CV exceeds 50\%, and an additional 26\% have a CV between 15\% and 50\%. The exact cause of this variation can be multifaceted, including hardware heterogeneity, communication patterns, or\textemdash the primary and widely acknowledged source\textemdash variability in request inputs~(\eg parameters or data size). Regardless of the specific cause, this widespread and often substantial variability directly contradicts the assumption of uniform demand underlying static allocation. Consequently, any static resource allocation must provision for the peak demand of such variable functions, inevitably leading to low average utilization.
 
-% 3) Opportunity: 函数动态运行时资源调整 
-% 现有容器框架支持动态运行时资源分配（具体机制或者接口），以及其好处（节省资源减少浪费）
 \parabf{Opportunity \#2: Dynamic in‑place runtime resource adjustment.}
 A key opportunity to address the intra-function variability lies in recent container 
 runtime enhancements that support dynamic, in-place resource adjustment. Specifically, 
@@ -68,22 +59,19 @@ benefits of a warm instance.
 \begin{figure}[t]
     \centering
     \includegraphics[width=0.95\linewidth]{figures/background/cdf_cpu_cv_regions.pdf}
-    \caption{Resource usage variations of serverless function.}
+    \caption{Resource demand variations of serverless function.}
     \vspace{-15pt}
 \label{fig:usage_variation}
 \end{figure}
 
 % 3. 动态资源分配的挑战
 
+\vspace{-7pt}
 \subsection{Challenges in Dynamic Resource Allocation for Functions}
 \label{sec:background:challenges}
 
-% 1）挑战1：副本放置挑战：动态资源分配打破了原有的静态资源分配假设，容器的资源需求不再是固定的，不能仅在容器启动和销毁时考虑节点资源分配
-% strawman solution：发生扩容剩余节点资源不足时直接evict其他同节点容器，但带来缓存损失，且可能放大（相对较大规格的容器扩容，可能一下需要evict多个小规格容器）
-% appeal for Minimal-Disruption Placement Scaling with multi-resource balance awareness
-
 \paraf{Challenge \#1: Placement under dynamic in-place resizing.} 
-Flexible instance configuration invalidates the traditional placement model that ignores diverse resource footprints~(\eg CPU-to-memory ratios). However, dynamic in-place resizing disrupts the straightforward fixed-size bin-packing model: a sandbox’s footprint may expand while active, making node feasibility assessments at start/stop times inadequate. A simplistic approach is to evict co-located instances to make space when upscaling faces insufficient capacity. However, this naive strategy risks evicting other co-located function instances with increased resource demand, potentially resulting in eviction amplification: a single significant resize event can force the eviction of multiple smaller co-located instances, thereby hurting cache locality and increasing tail latency. Additionally, fragmentation can occur when resource demand decreases. These problems may lead to low resource utilization and application throughput.
+Complementary placement addresses resource fragmentation caused by ignoring heterogeneous resource profiles (\eg CPU-to-memory ratios). However, dynamic in-place resizing disrupts the straightforward fixed-size bin-packing model: a sandbox’s footprint may expand while active, making node feasibility assessments at start/stop times inadequate. A simplistic approach is to evict co-located instances to make space when upscaling faces insufficient capacity. However, this naive strategy risks evicting other co-located function instances with increased resource demand, potentially resulting in eviction amplification: a single significant resize event can force the eviction of multiple smaller co-located instances, thereby hurting cache locality and increasing tail latency. Additionally, fragmentation can occur when resource demand decreases. These problems may lead to low resource utilization and application throughput.
 
 Therefore, an intelligent placement strategy must anticipate and mitigate the disruptive effects of resizing. The goal is twofold: i) to balance CPU and memory usage per node from the outset, preventing resource fragmentation and minimizing the need for disruptive migrations; and ii) to migrate instances in a manner that minimizes overall disruption when necessary. By promoting managed, minimal churn, such a strategy safeguards warm states~(maximizing instance reuse) and maintains high resource utilization even during dynamic resizing.
 
@@ -100,7 +88,6 @@ Practical dynamic resource allocation must achieve the following goal: it should
   \hfil
   \subfloat[]{\includegraphics[width=0.47\linewidth]{figures/background/ex_1.pdf}}
   \caption{Inefficient scaling strategies under variable workloads. (a) Eager bidirectional resizing with prohibitive reclamation overheads. (b) Increment-only resizing with wasted headroom.}
+  \vspace{-10pt}
   \label{fig:vertical_scaling_scheduling}
 \end{figure}
-
-% # 本文优化目标（场景：高负载、高并发，核心目标：资源利用率和任务吞吐量）
