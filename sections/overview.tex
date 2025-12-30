@@ -1,8 +1,8 @@
 \section{\sysname Overview}
 \label{sec:overview}
 
-Figure~\ref{fig:overview} illustrates the overall architecture of \sysname, which operates at two levels: inter-node request dispatching and intra-node request scheduling. At the cluster level, incoming user requests are first directed to a request dispatcher, which monitors traffic patterns. These traffic statistics, along with function metadata and performance metrics, are forwarded to the dispatching plan generator which periodically generates dispatching plans. A dispatching plan is then used by the Request Dispatcher to decide request-to-node assignments.
-Once assigned to a worker node, requests are entered into queues managed by the worker scheduler. This component maintains separate queues and priorities for different functions, while orchestrating instances within the node to handle request execution and in-place resource scaling. To enable this, \sysname introduces two key techniques: complementary swarming dispatching and monotonic scale-up scheduling.
+Figure~\ref{fig:overview} illustrates the overall architecture of \sysname, which operates at two levels: inter-node request routing and intra-node request scheduling. At the cluster level, incoming user requests are first directed to a request router, which monitors traffic patterns. These traffic statistics, along with function metadata and performance metrics, are forwarded to the routing plan generator which periodically generates routing plans. A routing plan is then used by the Request Router to decide request-to-node assignments.
+Once assigned to a worker node, requests are entered into queues managed by the worker scheduler. This component maintains separate queues and priorities for different functions, while orchestrating instances within the node to handle request execution and in-place resource scaling. To enable this, \sysname introduces two key techniques: complementary swarming routing and monotonic scale-up scheduling.
 
 {
 \begin{figure}[t]
@@ -15,7 +15,7 @@ Once assigned to a worker node, requests are entered into queues managed by the 
 \end{figure}
 }
 
-\parabf{Complementary Swarming Request Dispatching.}
+\parabf{Complementary Swarming Request Routing.}
 \sysname controls instance placement by establishing a mapping dictating how requests are distributed across the cluster. Using a heuristic algorithm, \sysname ensures that the collective resource demand of the function mix on each worker node aligns with the node's capacity, thereby balancing CPU and memory usage per node and preventing resource fragmentation. For high-demand functions requiring deployment across multiple nodes, \sysname employs request-level load splitting that groups requests of similar resource demand onto the same node where possible. This size-aware segregation mitigates the eviction amplification risk under dynamic in-place resizing by preventing uncontrolled, concurrent upsizing across nodes. By controlling the optimization step size and applying partial updates, \sysname keeps the average computation duration under 100 milliseconds.
 
 \parabf{Monotonic Scale-up Request Scheduling.}

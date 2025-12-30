@@ -153,7 +153,7 @@ predictable end-to-end performance, even when co-locating diverse benchmarks wit
 varying resource demands and execution characteristics.
 
 The performance gains of \sysname are primarily attributed to two mechanisms. 
-First, the complementary swarming request dispatching strategy enables individual 
+First, the complementary swarming request routing strategy enables individual 
 nodes to serve fewer functions, thereby increasing instance reuse probability. 
 This approach also aligns node workload with resource capacity, avoiding resource 
 waste caused by load-resource mismatch. Second, the monotonic scale-up 
@@ -218,10 +218,10 @@ to 44.89\%--44.06\%, memory utilization gains increase from 41.81\%--43.26\%
 to 55.42\%--57.37\%, and task throughput improvements expand from 45.22\%--51.06\% 
 to 75.45\%--78.98\%.
 
-This scaling trend can be attributed to the complementary swarming dispatching. With 
+This scaling trend can be attributed to the complementary swarming routing. With 
 fewer benchmarks, each node already operates on a limited set of functions, 
 leaving limited room for further optimization through instance reuse. In contrast, 
-when the workload is larger and more diverse, the dispatching reduces the number of 
+when the workload is larger and more diverse, the routing reduces the number of 
 distinct functions each node handles. This effect elevates the instance reuse 
 rate, which in turn improves overall~efficiency.
 
@@ -305,7 +305,7 @@ observed for memory utilization.
 
 The resource utilization advantage of \sysname stems from the reduction in cold 
 starts. This is achieved through two strategies. First, the complementary swarming 
-dispatching concentrates a narrower set of functions on each node, which 
+routing concentrates a narrower set of functions on each node, which 
 increases instance reuse opportunities. Second, the monotonic scale-up 
 scheduling policy reorders requests and dynamically adjusts instance resources, 
 enabling instances to serve varying demands throughout their lifecycle without 
@@ -322,8 +322,8 @@ probability of warm starts.
 In this section, we investigate the impact of the techniques employed by 
 \sysname. We evaluate \sysname using the following two simplified versions:
 \begin{itemize}
-    \item \textbf{Dispatching*}: This variant uses only the complementary swarming 
-    request dispatching strategy, while tasks within each node are scheduled using 
+    \item \textbf{Routing*}: This variant uses only the complementary swarming 
+    request routing strategy, while tasks within each node are scheduled using 
     a simple FIFO policy.
     \item \textbf{Scheduling*}: This variant uses only the monotonic scale-up 
     scheduling policy within each node, while user requests are randomly 
@@ -344,12 +344,12 @@ Figure~\ref{fig:technique} shows the performance comparison between \sysname and
 simplified versions. We also provide the evaluation results of the baselines for 
 reference.
 
-As shown, the performance of the Dispatching* version lies between the baselines 
+As shown, the performance of the Routing* version lies between the baselines 
 and \sysname. Compared to the baselines, it achieves improvements of 20.07\%--21.63\%, 
 16.90\%--17.23\%, and 17.31\%--15.74\% in CPU utilization, memory utilization, 
 and task throughput, respectively. However, it still falls short of \sysname by 
 16.39\%, 17.33\%, and 23.62\% in the metrics. These results demonstrate that the 
-complementary swarming dispatching strategy alone can effectively enhance 
+complementary swarming routing strategy alone can effectively enhance 
 scheduling performance through load partitioning. Furthermore, it requires integration 
 with the monotonic scale-up scheduling policy for fine-grained, 
 node-internal resource management to achieve optimal performance.
@@ -361,7 +361,7 @@ higher task throughput. This discrepancy occurs because Scheduling* prioritizes
 tasks with lower resource demands, shorter execution times, and higher  
 frequencies, without explicitly optimizing for overall server utilization.
 
-When integrated with the complementary swarming dispatching strategy 
+When integrated with the complementary swarming routing strategy 
 (as in \sysname), each node handles a limited, resource-complementary set of 
 functions. This increases the likelihood that tasks with high resource demands 
 are selected for instance setup and execution, raising the execution priority for 
@@ -409,7 +409,7 @@ advantage consistently at scale.
 \begin{figure}[t]
     \centering
     \includegraphics[width=0.97\linewidth]{figures/Eval/overhead_placement.pdf}
-    \caption{The average duration for \sysname to generate a dispatching plan.}
+    \caption{The average duration for \sysname to generate a routing plan.}
     \label{fig:overhead_placement}
     \vspace{-10pt}
 \end{figure}
@@ -424,13 +424,13 @@ from the Azure Functions Dataset~\cite{ShahradFGCBCLTR20}. The experimental resu
 are presented in Figures~\ref{fig:overhead_placement} and~\ref{fig:overhead_scheduling}. 
 
 Figure~\ref{fig:overhead_placement} shows the average duration for \sysname to generate 
-cluster-wide request dispatching plans under different cluster sizes. It can be observed 
+cluster-wide request routing plans under different cluster sizes. It can be observed 
 that the generation duration increases gradually with cluster scale but 
 remains largely unaffected by invocation frequency. This is because \sysname scales 
-the overall load proportionally to the cluster size before computing the dispatching 
+the overall load proportionally to the cluster size before computing the routing 
 plan. Even with 1024 worker nodes and an invocation rate of $250 \times 10^3$ 
 requests per minute, the latency stays below 110 ms. This result indicates that 
-the scheduler can generate dispatching plans promptly, even in large-scale 
+the scheduler can generate routing plans promptly, even in large-scale 
 clusters, demonstrating the practical scalability of~\sysname.
 
 {
@@ -445,8 +445,8 @@ clusters, demonstrating the practical scalability of~\sysname.
 
 Figure~\ref{fig:overhead_scheduling} shows the scheduling overhead for individual 
 tasks under different invocation frequencies. It should be noted that 
-dispatching plan generation is performed by a separate background process within 
-the scheduler. The main scheduling process only receives the resulting dispatching 
+routing plan generation is performed by a separate background process within 
+the scheduler. The main scheduling process only receives the resulting routing 
 plan and assigns tasks accordingly. Therefore, only the scheduling overhead 
 contributes to the additional latency introduced by \sysname in the end-to-end 
 task execution path. As shown, even under a heavy load of 1024 worker nodes, the 

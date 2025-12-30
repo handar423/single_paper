@@ -1,13 +1,13 @@
 \section{\sysname Design}
 
 \sysname employs a two-level hierarchical orchestration approach for 
-serverless function and request: complementary swarming request dispatching at the 
+serverless function and request: complementary swarming request routing at the 
 inter-node level and monotonic scale-up request scheduling at the intra-node level.
 
-\subsection{Complementary Swarming Request Dispatching}
+\subsection{Complementary Swarming Request Routing}
 \label{sec:design:placement}
 
-The complementary swarming dispatching algorithm addresses the scheduling challenge 
+The complementary swarming routing algorithm addresses the scheduling challenge 
 posed by heterogeneous function resource demands, as quantified in 
 \S\ref{sec:background:demand-analysis}. It pursues a dual objective: i) maximizing 
 cluster-wide resource utilization by co-locating functions with complementary CPU 
@@ -25,7 +25,7 @@ packing with equitable load distribution.
 \subsubsection{Modeling Node Capacity and Function Demand}
 \label{subsec:modeling}
 
-A precise formulation of the dispatching problem requires clear representations of 
+A precise formulation of the routing problem requires clear representations of 
 both node resource capacity and function resource demand.
 
 \textbf{Node Resource Capacity.} We model a worker node $N_j$’s available capacity 
@@ -75,12 +75,12 @@ more nuanced. We characterize it along three orthogonal dimensions:
 \end{enumerate}
 Together, the tuple $\left<r_i, \mathbf{V}_i, D_i\right>$ forms a comprehensive 
 demand profile for each function $F_i$, enabling our algorithm to reason about 
-complementary dispatching and proportional workload distribution simultaneously.
+complementary routing and proportional workload distribution simultaneously.
 
 {
 % \setlength{\belowdisplayskip}{-140pt}
 \begin{algorithm}[t]
-    \caption{\mbox{Complementary swarming dispatching.}}
+    \caption{\mbox{Complementary swarming routing.}}
     \noindent \textbf{Data:}
     \begin{algorithmic}[1]
     \Statex \begin{itemize}
@@ -94,7 +94,7 @@ complementary dispatching and proportional workload distribution simultaneously.
         \item Node set \(\mathcal{N} = \{N_1, \dots, N_m\}\).
         \item Function set \(\mathcal{F} = \{F_1, \dots, F_n\}\).
     \end{itemize}
-    \Ensure Optimized dispatching map $\mathcal{P}: \mathcal{F} \times [0,1] \to \mathcal{N}$.
+    \Ensure Optimized routing map $\mathcal{P}: \mathcal{F} \times [0,1] \to \mathcal{N}$.
     
     \State \textbf{// Step 1: Initialize state \& normalize function demands}
     \State \(\mathbf{L} \gets \mathbf{0}_{m \times n}\), \(\mathbf{R} \gets \mathbf{1}_n\)
@@ -144,15 +144,15 @@ complementary dispatching and proportional workload distribution simultaneously.
 \end{algorithm}
 }
 
-\subsubsection{Complementary Swarming Dispatching Algorithm}
+\subsubsection{Complementary Swarming Routing Algorithm}
 \label{subsec:placement-algorithm}
 
-Algorithm~\ref{alg:placement} presents the complementary swarming dispatching 
+Algorithm~\ref{alg:placement} presents the complementary swarming routing 
 algorithm. It takes as input the set of nodes $\mathcal{N}$ with their capacity 
 vectors $\mathbf{C}_j$, and the set of functions $\mathcal{F}$ with their demand 
-profiles $\langle r_i, \mathbf{V}_i, D_i \rangle$. The algorithm outputs a dispatching 
+profiles $\langle r_i, \mathbf{V}_i, D_i \rangle$. The algorithm outputs a routing 
 map $\mathcal{P}: \mathcal{F} \times [0,1] \to \mathcal{N}$. This mapping 
-determines request dispatch: when a function's workload is split across multiple 
+determines request routing rule: when a function's workload is split across multiple 
 nodes, $\mathcal{P}$ assigns each percentile of the function's resource‑demand 
 distribution to a specific node. This percentile‑based splitting is illustrated 
 in Figure~\ref{fig:placement_p}.
@@ -177,7 +177,7 @@ demand currently assigned to node $N_j$, initialized to all zeros (line~2).
 Furthermore, we scales the demand vector $\mathbf{V}_i$ of each function 
 proportionally so that the aggregate demand matches the total cluster capacity 
 ($\sum_i \mathbf{V}_i = \sum_j \mathbf{C}_j$). This normalization ensures the 
-subsequent dispatching operates under a balanced supply-demand premise~(Line~3--4). 
+subsequent routing operates under a balanced supply-demand premise~(Line~3--4). 
 
 \textbf{Step 2: Iterative Optimization Loop.}
 The core of the algorithm is an iterative loop that runs until all function demands 
@@ -209,9 +209,9 @@ will not terminate with $R[a] > 0$. To ensure the loop convergence speed, the
 algorithm skips nodes whose utilization gain $\Delta U_j$ is below a predefined 
 empirical threshold (\emph{e.g.}, 1\%).
 
-\textbf{Step 3: Fine-Grained Dispatching Generation.}
+\textbf{Step 3: Fine-Grained Routing Plan Generation.}
 After the assignment matrix $\mathbf{L}$ is determined, the algorithm converts 
-the proportional assignments into a precise dispatching map $\mathcal{P}$ 
+the proportional assignments into a precise routing map $\mathcal{P}$ 
 (Line~24--29). This process is illustrated in Figure~\ref{fig:placement_p}. 
 For each function $F_i$, the algorithm sequentially allocates contiguous percentile 
 intervals in $[0, 1]$ to each node $N_j$ that hosts $F_i$ (left side of the figure). 
@@ -221,15 +221,15 @@ practice, to avoid resource fragmentation that could arise if certain nodes only
 receive large requests, the intervals are assigned to nodes in a randomized order 
 rather than a fixed sequence; the figure omits this step for simplicity.
 
-\parabf{Request Dispatching.} At runtime, the interval $[0, 1]$ is concretely mapped 
+\parabf{Request Routing.} At runtime, the interval $[0, 1]$ is concretely mapped 
 to the resource‑demand percentiles of $F_i$’s requests (right side of 
 Figure~\ref{fig:placement_p}). Specifically, using $F_i$’s historical demand 
 distribution $D_i$, we pre‑compute the resource‑demand boundaries that correspond 
 to each percentile sub‑interval. When a new request arrives, its actual resource 
 demand (derived from input parameters and data size) is located on $D_i$ to obtain 
-its percentile $p$. The request is then dispatched to the node $N_j$ for which 
+its percentile $p$. The request is then routed to the node $N_j$ for which 
 $\mathcal{P}(F_i, p) = N_j$. For example, the newly arrived request marked in 
-the figure, whose demand percentile falls inside $[0.8, 1]$, would be dispatched 
+the figure, whose demand percentile falls inside $[0.8, 1]$, would be routed 
 to Node C. Our experiments obtain accurate demand estimates from the benchmark’s 
 known input characteristics; the algorithm can be coupled with more sophisticated 
 prediction methods for further performance gains.
@@ -379,7 +379,7 @@ zero to multiple concurrent warm instances, each dedicated to fetching requests 
 from that function’s current queue. The scheduler assigns a dynamic priority to 
 each function (detailed in \S\ref{subsec:priority-design}). At every scheduling 
 point—triggered by a new request arrival or a request completion—the scheduler selects 
-the function with the highest priority and attempts to dispatch the head request of 
+the function with the highest priority and attempts to process the head request of 
 its current~queue.
 
 \parabf{Resource‑assignment policy.} To execute the selected request, the scheduler 
