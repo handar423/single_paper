@@ -9,8 +9,6 @@
 
 Serverless computing has emerged as a promising cloud paradigm, allowing developers to focus on application logic by abstracting away infrastructure tasks such as provisioning, scaling, and maintenance. In this deployment model, users simply provide code (functions) with basic resource specifications and triggers. The platform then orchestrates the entire lifecycle\textemdash provisioning sandboxed environments, performing on-demand autoscaling, and managing pay-per-use billing. Consequently, efficient resource management is essential to ensure high performance, maximize utilization, and minimize costs for cloud platforms.
 
-%In practice, resource management for a serverless computing cluster encompasses two primary dimensions: i) per-instance resource configuration, which defines the resource limits for individual function instances; and ii) per-function orchestration, which governs autoscaling (instance count) and placement~(node selection) of each function.
-
 In practice, resource management for a serverless computing cluster is architected along two orthogonal axes: i) vertical sizing, which defines the resource limits for function instances; and ii) horizontal orchestration, which governs autoscaling~(instance count) and placement~(node selection) of each function.
 
 \parabf{Instance resource allocation (vertical).}
@@ -25,9 +23,9 @@ These limits remain fixed throughout the instance lifetime. Similar static per-i
 \parabf{Instance scaling and placement (horizontal).}
 % 2）根据静态资源配置进行容器扩缩容放置：现有的 serverless 系统大多基于静态资源配置进行容器放置调度
 % 仅容器启动、离开时比较资源：只需维护节点已分配资源和未分配资源总计，任务到来时可以分配到未分配资源>静态请求资源的节点上，更新已分配资源、未分配资源，函数容器销毁时释放资源、更新已分配资源、未分配资源即可
-Existing serverless computing systems perform autoscaling and placement based on a static per-function resource requirement~\cite{aws_scaling_window, aws_scaling_eq, knative_scaling}. While autoscalers adjust instance counts in response to load, schedulers employ a simple resource accounting model where each node tracks allocated versus available capacity. The resource counters are updated only during lifecycle events\textemdash decremented upon placement and incremented upon termination\textemdash ignoring actual usage during execution. An instance is admitted to a node only if the available capacity meets the function’s static requirement (\eg memory, CPU). For instance autoscaling and placement, recent research has pursued two main optimizations: i) for autoscaling, using prediction to right-size replica counts and prewarm instances~\cite{ShahradFGCBCLTR20, ORION_MahgoubYSECB22}; and ii) for placement, improving efficiency through cache-aware~\cite{SOCK_OakesYZHHAA18}, heterogeneity-aware~\cite{RoyPT22}, and data-affinity strategies~\cite{Wukong_CarverZWAWC20, ORION_MahgoubYSECB22}.
+Existing serverless computing systems perform autoscaling and placement based on a static per-function resource requirement~\cite{aws_scaling_window, aws_scaling_eq, knative_scaling}. While autoscalers adjust instance counts in response to load, schedulers employ a simple resource accounting model where each node tracks allocated versus available capacity. The resource counters are updated only during lifecycle events\textemdash decremented upon placement and incremented upon termination\textemdash ignoring actual usage during execution. An instance is admitted to a node only if the available capacity meets the function’s static resource requirement (\eg memory, CPU). For instance autoscaling and placement, recent research has pursued two main optimizations: i) for autoscaling, using prediction to right-size replica counts and prewarm instances~\cite{ShahradFGCBCLTR20, ORION_MahgoubYSECB22}; and ii) for placement, improving efficiency through cache-aware~\cite{SOCK_OakesYZHHAA18}, heterogeneity-aware~\cite{RoyPT22}, and data-affinity strategies~\cite{Wukong_CarverZWAWC20, ORION_MahgoubYSECB22}.
 
-Taken together, the prevailing serverless paradigm relies on modeling each function with a static, uniform resource profile. However, our characterization reveals that this static paradigm conflicts with a dual-layered heterogeneity in resource demands: diverse resource profiles across functions and varying demands within each function. In the next two subsections, we quantify these heterogeneities~(\S\ref{sec:background:demand-analysis}) and then analyze the system-level challenges that they pose to dynamic resource allocation~(\S\ref{sec:background:challenges}).
+Taken together, the prevailing serverless paradigm relies on modeling each function with a static, uniform resource profile. However, our characterization reveals that this static paradigm conflicts with a dual-layered heterogeneity in resource demands: diverse resource profiles across functions and varying demands within each function. In the next two subsections, we quantify these heterogeneities~(\S\ref{sec:background:demand-analysis}) and then analyze the system-level challenges that they pose to dynamic resource~allocation~(\S\ref{sec:background:challenges}).
 
 % 2. serverless 函数资源需求分析
 \subsection{Analysis of Resource Requirements of Functions}
@@ -36,7 +34,8 @@ Taken together, the prevailing serverless paradigm relies on modeling each funct
 \begin{figure}[t]
   \centering
   \includegraphics[width=0.95\linewidth]{figures/background/cpu_memory_ratio_histogram.pdf}
-  \caption{Heterogeneous CPU:memory ratios across functions.}
+  \caption{Heterogeneous CPU:memory ratios across functions.} 
+  \vspace{-10pt}
   \label{fig:cpu_mem_ratio_hist}
 \end{figure}
 
@@ -44,20 +43,7 @@ Taken together, the prevailing serverless paradigm relies on modeling each funct
 \parabf{Resource Usage Variation Across Functions.}
 The resource demands of serverless functions are highly heterogeneous. We quantify this heterogeneity by analyzing the execution traces of 162 real-world functions from the open-source Huawei dataset~\cite{huawei_dataset}, calculating the average CPU-to-memory ratio (core/GB) for each. Figure~\ref{fig:cpu_mem_ratio_hist} presents the distribution of these ratios across all functions.\footnote{The statistical results shown are from [Request Table Module, Region 4] part in dataset~\cite{huawei_dataset}. We observed similar distributions across different parts of the dataset.} The distribution is highly dispersed, with ratios ranging from 0.09 to 9.20 and a high CV of 62.43\%, indicating that some functions are extremely compute-intensive while others are predominantly memory-intensive. This substantial variation in intrinsic resource profiles implies that a resource allocation strategy that is unaware of such differences is prone to creating resource fragmentation.
 
-%\yunshan{
-%\parabf{Opportunity: Feasible instance resource configuration.}
-%Modern serverless platforms are increasingly offering more flexible instance configuration options to align with the inter-function resource heterogeneity. For instance, Google Cloud Run allows users to freely configure the CPU-to-memory ratio for instances within a range of 0.5 to 2~\cite{Doc:GCP_CloudRun_Mem}. Similarly, Alibaba Function Compute supports ratios between 0.25 and 1~\cite{alibaba_resource}. Although these predefined ranges are insufficient to cover the full spectrum of resource profiles observed in real-world traces (Figure~\ref{fig:cpu_mem_ratio_hist}), they provide a foundational mechanism to move beyond one-size-fits-all allocation. This capability provides the necessary foundation for allocating resources that better match a function's intrinsic demands, directly tackling the root cause of inter-node resource fragmentation.
-%}
-
 \parabf{Opportunity \#1: Heterogeneity-aware function placement.} The substantial dispersion in CPU-to-memory ratios across functions creates a significant opportunity to enhance cluster-wide resource efficiency through smarter placement. By leveraging the diverse resource profiles identified in our characterization, a scheduler can strategically co-locate functions with complementary demands\textemdash pairing compute-intensive workloads with memory-intensive ones. This complementary packing balances resource consumption along multiple dimensions at the node level, thereby minimizing fragmentation, maximizing aggregate utilization, and significantly increasing the effective capacity of the server fleet.
-
-\begin{figure}[t]
-    \centering
-    \includegraphics[width=0.95\linewidth]{figures/background/cdf_cpu_cv_regions.pdf}
-    \caption{Resource usage variations of serverless function.}
-    \vspace{-15pt}
-\label{fig:usage_variation}
-\end{figure}
 
 % 2) 调用级别资源占用
 \parabf{Resource Usage Variation Across Requests.}
@@ -79,6 +65,14 @@ It absorbs demand bursts, reduces stranded resources from over-provisioning,
 and lowers the risk of SLO violation\textemdash while preserving performance 
 benefits of a warm instance.
 
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=0.95\linewidth]{figures/background/cdf_cpu_cv_regions.pdf}
+    \caption{Resource usage variations of serverless function.}
+    \vspace{-15pt}
+\label{fig:usage_variation}
+\end{figure}
+
 % 3. 动态资源分配的挑战
 
 \subsection{Challenges in Dynamic Resource Allocation for Functions}
@@ -98,7 +92,7 @@ Therefore, an intelligent placement strategy must anticipate and mitigate the di
 
 This asymmetry creates a fundamental dilemma for naive instance resizing strategies. If an instance undergoes eager bidirectional resizing for every request, the high downsizing costs identified above incur prohibitive memory reclamation overheads and disrupt page caches and JIT states. Conversely, a increment-only strategy that avoids downsizing inevitably leads to severe over-provisioning, as instances accumulate resources to match their historical peak demand. In either case, the theoretical advantages of dynamic scaling are negated. These inefficiencies are illustrated in Figure~\ref{fig:vertical_scaling_scheduling}, which contrasts the reclamation overhead of bidirectional resizing with the wasted headroom of increment-only resizing.
 
-Practical dynamic resource allocation must achieve the following goal: it should adapt resource allocation to varying request-level demands without incurring sigfinicant overheads of frequent downsizing. This necessitates a mechanism that can batch or reorder requests to create resource usage patterns that are favorable to increment-only adjustments within short time windows, thereby amortizing reclamation costs and preserving warm instance state.
+Practical dynamic resource allocation must achieve the following goal: it should adapt resource allocation to varying request-level demands without incurring significant overheads of frequent downsizing. This necessitates a mechanism that can batch or reorder requests to create resource usage patterns that are favorable to increment-only adjustments within short time windows, thereby amortizing reclamation costs and preserving warm instance state.
 
 \begin{figure}[t]
   \centering

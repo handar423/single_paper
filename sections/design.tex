@@ -15,7 +15,7 @@ and memory profiles on the same node, thereby mitigating resource stranding;
 and ii) enhancing instance reuse by deliberately narrowing the set of distinct 
 functions served per node. To achieve this, the algorithm proceeds iteratively. 
 In each round, it assigns the workload of a function to one or more worker nodes 
-based on the function‘s resource profile and, when necessary, rolls back partial 
+based on the function's resource profile and, when necessary, rolls back partial 
 assignments of other already-placed functions to improve complementary packing. 
 For functions requiring distribution across multiple nodes, the algorithm performs 
 fine-grained load splitting according to the function resource demand distribution. 
@@ -157,6 +157,17 @@ nodes, $\mathcal{P}$ assigns each percentile of the function's resource‑demand
 distribution to a specific node. This percentile‑based splitting is illustrated 
 in Figure~\ref{fig:placement_p}.
 
+{
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{figures/design/placement_p.pdf}
+  \vspace{-10pt}
+  \caption{Generate $\mathcal{P}$ from $L$.}
+  \vspace{-10pt}
+  \label{fig:placement_p}
+\end{figure}
+}
+
 \textbf{Step 1: Initialization \& Demand Normalization.}
 The algorithm maintains two key data structures initialized in this step: i) a 
 pending assignment vector $\mathbf{R}$, where $R[i]$ denotes the fraction of 
@@ -166,7 +177,7 @@ demand currently assigned to node $N_j$, initialized to all zeros (line~2).
 Furthermore, we scales the demand vector $\mathbf{V}_i$ of each function 
 proportionally so that the aggregate demand matches the total cluster capacity 
 ($\sum_i \mathbf{V}_i = \sum_j \mathbf{C}_j$). This normalization ensures the 
-subsequent dispatching operates under a balanced supply-demand premise (Line~3--4). 
+subsequent dispatching operates under a balanced supply-demand premise~(Line~3--4). 
 
 \textbf{Step 2: Iterative Optimization Loop.}
 The core of the algorithm is an iterative loop that runs until all function demands 
@@ -182,15 +193,14 @@ in Algorithm~\ref{alg:swap-capacity}). $\text{SwapCapacity}$ returns both the
 maximum $F_a$ demand fraction $\alpha_j^{\text{swap}}$ that can be hosted by 
 function swaping, and a list $\mathcal{E}_j$ of evicted functions, each with the 
 evicted load fraction $\beta$. The total accommodation capacity for $F_a$ on 
-$N_j$ is then $\alpha_j^{\text{max}} = \min(\alpha_j^{\text{free}}+\alpha_j^{\text{swap}}, R[a])$ 
-(Line~14).
+$N_j$ is then $\alpha_j^{\text{max}} = \min(\alpha_j^{\text{free}}+\alpha_j^{\text{swap}}, R[a])$~(Line~14).
 
 After evaluating all nodes, the algorithm sorts them in descending order of the 
 utilization gain $\Delta U_j$ (Line~17) and assigns $F_a$ pending demand greedily. 
 For each node in this order, it assigns up to $\alpha_j^{\text{max}}$ of $F_a$ demand, 
 updates $\mathbf{L}$ and $\mathbf{R}$ (Line~19), and simultaneously processes 
 the evictions in $\mathcal{E}_j$: for each function $F_k$ in $\mathcal{E}_j$, 
-the algorithm reducing the evicted fraction $\beta_k$ in $\mathbf{L}[j, k]$ and 
+the algorithm reduces the evicted fraction $\beta_k$ in $\mathbf{L}[j, k]$ and 
 adds $\beta_k$ back to $F_k$ pending demand $\mathbf{R}[k]$ (Line~21). This process 
 continues until $F_a$ demand is fully placed ($R[a]=0$). Because the total 
 function demand was scaled to match the total cluster capacity in Step 1, it is 
@@ -198,17 +208,6 @@ guaranteed that $F_a$ demand can eventually be fully accommodated, and the loop
 will not terminate with $R[a] > 0$. To ensure the loop convergence speed, the 
 algorithm skips nodes whose utilization gain $\Delta U_j$ is below a predefined 
 empirical threshold (\emph{e.g.}, 1\%).
-
-{
-\begin{figure}[t]
-  \centering
-  \includegraphics[width=\linewidth]{figures/design/placement_p.pdf}
-  \vspace{-10pt}
-  \caption{Generate $\mathcal{P}$ from $L$.}
-  \vspace{-10pt}
-  \label{fig:placement_p}
-\end{figure}
-}
 
 \textbf{Step 3: Fine-Grained Dispatching Generation.}
 After the assignment matrix $\mathbf{L}$ is determined, the algorithm converts 
@@ -280,7 +279,7 @@ a given node $N_j$ and a target function $F_a$, the maximum additional fraction
 $\alpha_j^{\text{swap}}$ of $F_a$ demand that can be hosted by beneficially evicting 
 already-placed functions. A swap is considered beneficial only if it increases 
 the overall node utilization $U(N_j)$. This requirement dictates that swaps must 
-consume the node’s dominant idle resource: if CPU is idle, $F_a$ must replace 
+consume the node's dominant idle resource: if CPU is idle, $F_a$ must replace 
 more memory-intensive functions (with smaller demand ratio $r_k$); if memory is 
 idle, it must replace more compute-intensive ones (with larger $r_k$). The subroutine 
 takes as input the node idle resource vector $\mathbf{C}_j^{\text{idle}}$, the 
@@ -381,7 +380,7 @@ from that function’s current queue. The scheduler assigns a dynamic priority t
 each function (detailed in \S\ref{subsec:priority-design}). At every scheduling 
 point—triggered by a new request arrival or a request completion—the scheduler selects 
 the function with the highest priority and attempts to dispatch the head request of 
-its current queue.
+its current~queue.
 
 \parabf{Resource‑assignment policy.} To execute the selected request, the scheduler 
 tries the following options in order, aiming to minimize overhead:
@@ -401,7 +400,7 @@ tries the following options in order, aiming to minimize overhead:
 
 If the node lacks sufficient idle resources for options ii) or iii), the scheduler 
 evaluates eviction. It selects candidate instances according to a per‑sandbox 
-eviction priority computed as:
+eviction priority computed~as:
 \[
 \text{Prio}_{\text{instance}} = \frac{\text{Prio}_{\text{function}}}{N_{\text{instances}}},
 \]
@@ -463,7 +462,7 @@ The three factors are defined as follows:
     \item \textbf{Scaling‑efficiency factor} ($\text{factor}_3$).  
     Let $t_{\text{first}}$ and $t_{\text{last}}$ be the requests with the smallest 
     and largest predicted resource demands in $F_i$ current queue, respectively. 
-    Under the assumption that all request of the same function share the same 
+    Under the assumption that all requests of the same function share the same 
     CPU‑to‑memory ratio (see \S\ref{subsec:modeling}), the ratio can be computed 
     using either dimension; we use memory for concreteness:
     \[

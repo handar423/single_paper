@@ -1,5 +1,7 @@
+\vspace{-5pt}
 \section{Evaluation}
 \label{sec:experiments}
+\vspace{-3pt}
 
 In this section, we first evaluate the overall performance of \sysname against 
 state-of-the-art systems—Palette~\cite{abdi2023palette} and 
@@ -7,22 +9,6 @@ FaaSCache~\cite{FaaSCache}—in \S\ref{sec:experiments_comparsion}. Next,
 we conduct an in-depth analysis of the effectiveness of the key techniques 
 employed in \sysname in \S\ref{sec:experiments_technique}. Finally, we investigate 
 the scalability of \sysname in large-scale cluster environments in \S\ref{sec:experiments_overhead}.
-
-\subsection{Evaluation Setup}
-\label{sec:experiments_setup}
-
-\parabf{Benchmarks.}
-We selected ten benchmark applications from a recent open-source serverless 
-benchmarking suite~\cite{copik2021sebs, benchmark_10} to evaluate the performance 
-of \sysname across diverse workloads. Table~\ref{tab:setup} summarizes the basic 
-distribution and resource profiles of these benchmarks. The selected benchmarks 
-span multiple categories—including Web Apps, Multimedia, Utilities, Machine Learning, 
-and Scientific Computing—and exhibit substantial variation in resource requirements. 
-As shown in the table, their memory consumption ranges from 0.5--4 GB, CPU usage 
-from 0.5--4 cores, and execution time from 0.15--21.5 seconds. Crucially, the 
-CPU-to-memory ratio (shown in the table) varies widely from 0.25 to 1.50 cores/GB, 
-highlighting the spectrum from memory-intensive (\emph{e.g.}, thumbnailer) to 
-CPU-intensive (\emph{e.g.}, graph-bfs) workloads.
 
 \begin{table*}[t]
     \vspace{-10pt}
@@ -41,71 +27,84 @@ CPU-intensive (\emph{e.g.}, graph-bfs) workloads.
         compression    & Utilities      & 1.0 & 2.0 & 1.5 & 0.50 & Compressing multiple files into a ZIP archive for download. \\
         image-recognition & ML          & 2.5 & 4.0 & 1.6 & 0.63 & Performing image classification using ResNet and PyTorch. \\
         thumbnailer    & Multimedia     & 0.5 & 2.0 & 5.0 & 0.25 & Creating thumbnail images from input pictures. \\
-        video-processing & Multimedia   & 1.5 & 4.0 & 11.0 & 0.38 & Adding watermarks and generates GIFs from video files. \\
+        video-processing & Multimedia   & 1.5 & 4.0 & 11.0 & 0.38 & Adding watermarks and generating GIFs from video files. \\
         \bottomrule
+        \vspace{-15pt}
     \end{tabular}
 \end{table*}
 
+\subsection{Evaluation Setup}
+\label{sec:experiments_setup}
+
+\parabf{Benchmarks.}
+We selected ten benchmark applications from a recent open-source serverless 
+benchmarking suite~\cite{copik2021sebs, benchmark_10} to evaluate the performance 
+of \sysname across diverse workloads. Table~\ref{tab:setup} summarizes the basic 
+distribution and resource profiles of these benchmarks. The selected benchmarks 
+span multiple categories—including Web Apps, Multimedia, Utilities, Machine Learning, 
+and Scientific Computing—and exhibit substantial variation in resource requirements. 
+As shown in the table, their memory consumption ranges from 0.5--4 GB, CPU usage 
+from 0.5--4 cores, and execution time from 0.15--21.5 seconds. Crucially, the 
+CPU-to-memory ratio (shown in the table) varies widely from 0.25 to 1.50 cores/GB, 
+highlighting the spectrum from memory-intensive (\emph{e.g.}, thumbnailer) to 
+CPU-intensive (\emph{e.g.}, graph-bfs) workloads.
+
 \parabf{Workload generation.} We generate user traffic based on the 
-Azure Functions Dataset~\cite{ShahradFGCBCLTR20}. For each benchmark, a 
-corresponding function invocation trace is randomly sampled from the top 20\% 
-most frequently invoked functions—a subset reported to account for the majority 
-of resource consumption in production environments~\cite{ShahradFGCBCLTR20}, 
-thus representing the critical bottleneck for cluster performance optimization. 
-The invocation rate of each trace is proportionally scaled so that the aggregated 
-resource demand approaches the total capacity of the cluster, while the invocation 
-frequencies across the ten benchmarks are adjusted to be nearly identical (with a 
-relative difference of less than 2\%). Since the original trace data is 
-recorded at minute-level granularity, we model intra-minute request arrivals using 
-a Poisson process, a standard model for independent random events in systems and 
-performance analysis~\cite{Gallager2013Stochastic}. In alignment with common 
-industrial practice~\cite{aws_scaling_window, knative_scaling_window}, the 
-scaling interval is set to one minute.
+Azure Functions Dataset~\cite{ShahradFGCBCLTR20}. For each benchmark, we randomly 
+sample a function invocation trace from the top 20\% most frequently invoked 
+functions, which account for the majority of resource consumption in production 
+environments~\cite{ShahradFGCBCLTR20}, representing the critical bottleneck for 
+cluster performance optimization. Each trace's invocation rate is proportionally 
+scaled so that the aggregated resource demand approaches the total cluster capacity, 
+and the invocation frequencies across the ten benchmarks are adjusted to be nearly 
+identical, with relative differences under 2\%. Given that the original trace 
+data is recorded at minute-level granularity, intra-minute request arrivals are 
+modeled as a Poisson process, a standard approach for independent random events 
+in systems and performance analysis~\cite{Gallager2013Stochastic}. Following common 
+industrial practice~\cite{aws_scaling_window, knative_scaling_window}, the scaling 
+interval is set to one minute.
 
 To accurately model real-world serverless functions, we first analyze 
-the resource assumption distribution in the dataset~\cite{ShahradFGCBCLTR20}. 
-Using both the Shapiro-Wilk~\cite{SHAPIRO1965} and Kolmogorov-Smirnov 
-normality~\cite{f4feef4d-12ae-314a-a10b-d1f2768e819a} tests, we find that over 
-95\% of functions exhibit memory usage patterns that do not significantly deviate 
-from a normal distribution (p-value $>$ 0.05). Based on this empirical observation, 
-we model the per-function resource demand as normally distributed across function requests.
-For our evaluation, we randomly select ten functions from the dataset and perform 
-Gaussian fitting to obtain the variance of their memory usage. We then adjust 
-the input data size and parameters of each benchmark so that its actual resource 
-requirements match the sampled variance. Since the dataset primarily reflects 
-memory demand, we assume the CPU allocation proportionally with the fixed 
-CPU-to-memory ratio for each benchmark.
+the resource usage distribution in the Azure Functions dataset~\cite{ShahradFGCBCLTR20}. 
+Using both the Shapiro-Wilk~\cite{SHAPIRO1965} and Kolmogorov-Smirnov~\cite{f4feef4d-12ae-314a-a10b-d1f2768e819a} 
+tests for normality, we find that over 95\% of functions exhibit memory usage 
+patterns that do not significantly deviate from a normal distribution (p-value $>$ 0.05). 
+Based on this empirical observation, we model the per-function resource demand 
+as normally distributed across requests. For our evaluation, we randomly select 
+ten functions from the dataset and perform Gaussian fitting to estimate the 
+variance of their memory usage. We then adjust the input data size and parameters 
+of each benchmark so that the actual resource requirements reflect the sampled 
+variance. Since the dataset primarily captures memory demand, CPU allocation is 
+assumed to scale proportionally with the fixed CPU-to-memory ratio for each benchmark.
 
-\parabf{Cluster configuration.} Our experiments are conducted on CloudLab~\cite{cloudlab} using 
-a cluster consisting of 9 c6620 instances (56 cores in total, 2$\times$ Intel Xeon Gold 5512U 
-@ 2.1GHz, 128GB memory). Eight of them serve as working servers and one as the 
-scheduler and user request generator. To simulate the varied resource availability 
-conditions in production clusters, our evaluation allocates only a subset of total 
-resources on each worker server. Unless otherwise specified, the available resource 
-proportions across different servers are sampled from a normal distribution with 
-a standard deviation of 0.85.
+\parabf{Cluster configuration.} Experiments are conducted on CloudLab~\cite{cloudlab} 
+using a cluster of nine c6620 instances (56 cores total, 2$\times$ Intel Xeon 
+Gold 5512U @ 2.1GHz, 128GB memory). Eight nodes serve as worker servers and one 
+as the scheduler and request generator. To emulate the heterogeneous resource 
+availability typical of production clusters, each worker node is allocated only 
+a subset of its total resources. Unless otherwise specified, the available resource 
+proportions across nodes are sampled from a normal distribution with a standard 
+deviation~of~0.85.
 
 \parabf{Baselines.} We evaluate \sysname against two state-of-the-art resource 
-management approaches for serverless platforms: Palette~\cite{abdi2023palette} 
-and FaaSCache~\cite{FaaSCache}, which optimize cluster efficiency from 
-complementary perspectives. Palette enhances spatial locality by allowing 
-users to assign color labels to functions and co-locating those with the same color 
-on the same server. In our experiments, each benchmark is assigned a unique color. 
-Inspired by caching systems, FaaSCache employs a Greedy-Dual keep-alive 
-strategy that assigns a priority to each kept-alive instance and evicts low-priority 
-instances first under resource pressure. To ensure a fair comparison and minimize 
-the impact of engineering artifacts, we reimplement both baselines in our prototype 
-environment. Furthermore, to better reflect real-world production settings while 
+management approaches for serverless platforms, both of which optimize cluster 
+efficiency from complementary perspectives. For Palette, each benchmark is assigned 
+a unique color, and functions with the same color are co-located on the same server 
+to enhance spatial locality. Inspired by caching systems, FaaSCache employs a 
+Greedy-Dual keep-alive strategy, which assigns a priority to each kept-alive 
+instance and evicts low-priority instances first under resource pressure. To 
+ensure a fair comparison and minimize the impact of engineering artifacts, we 
+reimplement both baselines in our prototype environment. Furthermore, while 
 maintaining controlled conditions, we enable Kubernetes pod in-place scaling 
-across all systems during evaluation (see prototype implementation details 
-in Section~\ref{sec:implementation}).
+across all systems during evaluation (see prototype implementation details in 
+Section~\ref{sec:implementation}).
 
-\parabf{Metric.} We evaluate system performance using memory utilization, CPU 
-usage, and task throughput as primary metrics. To verify that the scheduling 
-algorithm in \sysname does not lead to task starvation, we also compare the 95th 
-percentile tail latency of task processing. Each data point is collected from 
-one-hour-long test runs, with the performance data from the first five minutes 
-excluded to eliminate the impact of initial cold starts.
+\parabf{Metric.} We evaluate system performance using CPU/memory utilization 
+and task throughput as primary metrics. To verify that the scheduling algorithm 
+in \sysname does not lead to task starvation, we also compare the 95th percentile 
+tail latency of task processing. Each data point is collected from a one-hour 
+test run, with the performance data from the first five minutes excluded to 
+eliminate the impact of initial cold starts.
 
 \subsection{Benefits of \sysname}
 \label{sec:experiments_comparsion}
@@ -120,18 +119,19 @@ excluded to eliminate the impact of initial cold starts.
     \hfil
     \subfloat[]{\includegraphics[width=0.32\linewidth]{figures/Eval/distribution_Task throughput.pdf}%
     \label{fig:eval_dis_throughput}}
-    \caption{Performance comparison under different cluster resource distribution. (a) CPU Utilization. (b) Memory Utilization. (c) Task throughput.}
+    \caption{Performance comparison under different cluster resource distributions. (a) CPU Utilization. (b) Memory Utilization. (c) Task throughput.}
     \vspace{-15pt}
 \label{fig:eval_dis}
 \end{figure*}
 
 To better demonstrate the performance of \sysname under different deployment 
-scenarios, we first compare the overall performance among \sysname and baselines 
-under different cluster resource distribution, benchmark number and workload distributions.
+scenarios, we first compare the overall performance between \sysname and baselines 
+under different cluster resource distributions, benchmark numbers and workload 
+distributions.
 
-\parabf{Comparison under different cluster resource distribution.} Figure~\ref{fig:eval_dis} 
+\parabf{Comparison under different cluster resource distributions.} Figure~\ref{fig:eval_dis} 
 compares the performance of \sysname and baselines under different cluster resource 
-distribution. We introduce two resource availability patterns: uniform 
+distributions. We introduce two resource availability patterns: uniform 
 and Zipf distributions. Under the uniform distribution, each server is configured 
 with 75\% of its total resources available. In the Zipf-based distribution, the 
 fraction of available resources per server follows a Zipf distribution parameterized 
@@ -194,14 +194,14 @@ further boosting overall resource utilization.
 \label{fig:eval_function}
 \end{figure*}
 
-\parabf{Comparison under different benchmark number.}
+\parabf{Comparison under different benchmark numbers.}
 Next, we evaluate \sysname and the baselines under different workload scales. 
 Beyond the default configuration of 10 benchmarks, we provide two additional scenarios:
 
 \begin{itemize}
     \item \textbf{5 benchmarks}: A randomly selected subset comprising \textbf{video-processing}, 
     \textbf{graph-pagerank}, \textbf{image-recognition}, \textbf{dna-visualization}, 
-    and \textbf{thumbnailer}. To maintain the comparable total load, the 
+    and \textbf{thumbnailer}. To maintain comparable total load, the 
     invocation rate for each function in this set is doubled;
 
     \item \textbf{20 benchmarks}: The original 10 benchmarks plus their replicas. Each 
@@ -280,7 +280,7 @@ resource~efficiency.
     \subfloat[]{\includegraphics[width=0.9\linewidth]{figures/Eval/detail_memory.pdf}%
     \label{fig:eval_detail_memory}}
     \caption{Detail Resource Comsupmtion of \sysname and baselines. (a) CPU Detail Comsupmtion. (b) Memory Detail Comsupmtion.}
-    \vspace{-15pt}
+    \vspace{-10pt}
 \label{fig:eval_detail}
 \end{figure}
 
@@ -319,18 +319,8 @@ probability of warm starts.
 \subsection{Effectiveness of \sysname}
 \label{sec:experiments_technique}
 
-{
-\begin{figure}[t]
-    \centering
-    \includegraphics[width=0.97\linewidth]{figures/Eval/workflow_xiaorong.pdf}
-    \caption{Performance comparison between \sysname and simplified versions.}
-    \label{fig:technique}
-    \vspace{-10pt}
-\end{figure}
-}
-
 In this section, we investigate the impact of the techniques employed by 
-\sysname. We measure \sysname with the following two simplified versions:
+\sysname. We evaluate \sysname using the following two simplified versions:
 \begin{itemize}
     \item \textbf{Dispatching*}: This variant uses only the complementary swarming 
     request dispatching strategy, while tasks within each node are scheduled using 
@@ -339,6 +329,16 @@ In this section, we investigate the impact of the techniques employed by
     scheduling policy within each node, while user requests are randomly 
     assigned across worker nodes.
 \end{itemize}
+
+{
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=0.97\linewidth]{figures/Eval/workflow_xiaorong.pdf}
+    \caption{Performance comparison between \sysname, baselines and simplified versions.}
+    \label{fig:technique}
+    \vspace{-15pt}
+\end{figure}
+}
 
 Figure~\ref{fig:technique} shows the performance comparison between \sysname and 
 simplified versions. We also provide the evaluation results of the baselines for 
@@ -358,7 +358,7 @@ The performance of the Scheduling* variant reveals a more nuanced trade-off. It
 underperforms \sysname in resource utilization, with CPU and memory utilization 
 lower by 13.35\% and 29.99\%, respectively. Despite this, it achieves a 27.95\% 
 higher task throughput. This discrepancy occurs because Scheduling* prioritizes 
-tasks with lower resource demands, shorter execution times, and higher execution 
+tasks with lower resource demands, shorter execution times, and higher  
 frequencies, without explicitly optimizing for overall server utilization.
 
 When integrated with the complementary swarming dispatching strategy 
@@ -399,11 +399,11 @@ show the system overhead of the \sysname scheduler on up to 1024 nodes.
 In the larger-scale cluster experiment, we increased the number of worker nodes 
 to 16 and proportionally scaled the invocation frequency, while keeping 
 other conditions constant. Figure~\ref{fig:eval_big} shows the performance comparison 
-among \sysname and the baselines. Compared to the baselines, \sysname improves 
+between \sysname and the baselines. Compared to the baselines, \sysname improves 
 CPU utilization by 31.80\%--61.75\%, memory utilization by 41.95\%--53.82\%, 
 and task throughput by 40.24\%--110.75\%. These results align with those observed 
 in the smaller cluster, demonstrating that \sysname maintains its performance 
-advantage stably at scale.
+advantage consistently at scale.
 
 {
 \begin{figure}[t]
@@ -411,16 +411,6 @@ advantage stably at scale.
     \includegraphics[width=0.97\linewidth]{figures/Eval/overhead_placement.pdf}
     \caption{The average duration for \sysname to generate a dispatching plan.}
     \label{fig:overhead_placement}
-    \vspace{-10pt}
-\end{figure}
-}
-
-{
-\begin{figure}[t]
-    \centering
-    \includegraphics[width=0.97\linewidth]{figures/Eval/overhead_scheduling.pdf}
-    \caption{The average scheduling overhead of \sysname.}
-    \label{fig:overhead_scheduling}
     \vspace{-10pt}
 \end{figure}
 }
@@ -441,10 +431,20 @@ the overall load proportionally to the cluster size before computing the dispatc
 plan. Even with 1024 worker nodes and an invocation rate of $250 \times 10^3$ 
 requests per minute, the latency stays below 110 ms. This result indicates that 
 the scheduler can generate dispatching plans promptly, even in large-scale 
-clusters, demonstrating the practical scalability of \sysname.
+clusters, demonstrating the practical scalability of~\sysname.
+
+{
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=0.97\linewidth]{figures/Eval/overhead_scheduling.pdf}
+    \caption{The average scheduling overhead of \sysname.}
+    \label{fig:overhead_scheduling}
+    \vspace{-10pt}
+\end{figure}
+}
 
 Figure~\ref{fig:overhead_scheduling} shows the scheduling overhead for individual 
-task under different invocation frequencies. It should be noted that 
+tasks under different invocation frequencies. It should be noted that 
 dispatching plan generation is performed by a separate background process within 
 the scheduler. The main scheduling process only receives the resulting dispatching 
 plan and assigns tasks accordingly. Therefore, only the scheduling overhead 
