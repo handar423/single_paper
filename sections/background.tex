@@ -21,16 +21,10 @@ Existing serverless computing systems perform autoscaling and placement based on
 Taken together, the prevailing serverless paradigm relies on modeling each function with a static, uniform resource profile. However, our characterization reveals that this static paradigm conflicts with a dual-layered heterogeneity in resource demands: diverse resource profiles across functions and varying demands within each function. In the next two subsections, we quantify these heterogeneities~(\S\ref{sec:background:demand-analysis}) and then analyze the system-level challenges that they pose to dynamic resource~allocation~(\S\ref{sec:background:challenges}).
 
 % 2. serverless 函数资源需求分析
+\vspace{-7pt}
 \subsection{Analysis of Resource Requirements of Functions}
 \label{sec:background:demand-analysis}
-
-\begin{figure}[t]
-  \centering
-  \includegraphics[width=0.95\linewidth]{figures/background/cpu_memory_ratio_histogram.pdf}
-  \caption{Heterogeneous CPU:memory ratios across functions.} 
-  \vspace{-10pt}
-  \label{fig:cpu_mem_ratio_hist}
-\end{figure}
+\vspace{-7pt}
 
 % 1) 函数级别需求分布
 \parabf{Resource Demand Variation Across Functions.}
@@ -41,6 +35,14 @@ The resource demands of serverless functions are highly heterogeneous. We quanti
 % 2) 调用级别资源占用
 \parabf{Resource Demand Variation Across Requests.}
 Resource demand also varies significantly across different requests of the same function. We compute the coefficient of variation (CV) for the CPU usage of each function across its request trace. The distribution of these CV values is presented in Figure~\ref{fig:usage_variation}. Our analysis shows that variability is the norm rather than the exception: for 54\% of functions, the CV exceeds 50\%, and an additional 26\% have a CV between 15\% and 50\%. The exact cause of this variation can be multifaceted, including hardware heterogeneity, communication patterns, or\textemdash the primary and widely acknowledged source\textemdash variability in request inputs~(\eg parameters or data size). Regardless of the specific cause, this widespread and often substantial variability directly contradicts the assumption of uniform demand underlying static allocation. Consequently, any static resource allocation must provision for the peak demand of such variable functions, inevitably leading to low average utilization.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.95\linewidth]{figures/background/cpu_memory_ratio_histogram.pdf}
+  \caption{Heterogeneous CPU:memory ratios across functions.} 
+  \vspace{-10pt}
+  \label{fig:cpu_mem_ratio_hist}
+\end{figure}
 
 \parabf{Opportunity \#2: Dynamic in-place runtime resource adjustment.}
 A key opportunity to address the intra-function variability lies in recent container 
