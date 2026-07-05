@@ -1,0 +1,37 @@
+\section{Discussion}
+\label{sec:discussion}
+
+\parabf{Scope of the resource-profile model.}
+\sysname primarily targets fine-grained functions whose requests vary in demand
+magnitude while retaining an approximately stable CPU-to-memory profile. The
+current design can also operate with single-resource-dominant streaming functions,
+such as video-processing and uploader in Figure~\ref{fig:ratio_stability_scatter},
+but representing them with a fixed resource ratio may over-allocate the less
+variable resource. We retain this model because it is compatible with the static
+and often coupled resource-allocation model exposed by existing serverless
+platforms (\S\ref{sec:background:resource-management}). A natural extension is
+to model CPU and memory demands independently during routing and scaling;
+realizing its full benefit would also require serverless platforms to expose
+independently adjustable per-resource allocations.
+
+Complex applications whose execution phases have qualitatively different
+resource profiles are commonly decomposed into separate functions, allowing
+each phase to be provisioned independently. If such phases are inseparably
+embedded within one function, however, a single demand ratio is insufficient.
+Supporting these workloads would require multiple resource profiles and
+request-level profile classification, which we leave for future work.
+
+\parabf{Vertical scaling versus size-specific pools.}
+The central challenge in predictive horizontal scaling with size-specific
+prewarmed pools is determining function-specific boundaries that partition
+requests into resource-size classes. Coarse-grained classes retain substantial
+within-class demand variation and therefore require over-provisioning, whereas
+fine-grained classes fragment warm capacity across pools and reduce instance-reuse
+opportunities. Monotonic vertical scaling avoids this granularity trade-off by
+allowing a warm instance to serve requests with different resource demands
+without predefined size boundaries. We acknowledge that size-specific pools can
+be effective when a function serves only a few stable request types, or when its
+invocation volume is sufficiently high to maintain high reuse within every
+fine-grained pool. Outside these regimes, vertical scaling provides a more
+flexible way to accommodate heterogeneous request demands, although it introduces
+the resizing-management complexity addressed by \sysname.

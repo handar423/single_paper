@@ -30,12 +30,34 @@ Taken together, the prevailing serverless paradigm relies on modeling each funct
 \parabf{Resource Demand Variation Across Functions.}
 The resource demands of serverless functions are highly heterogeneous. We quantify this heterogeneity by analyzing the execution traces of 162 real-world functions from the open-source Huawei dataset~\cite{huawei_dataset}, calculating the average CPU-to-memory ratio (core/GB) for each. Figure~\ref{fig:cpu_mem_ratio_hist} presents the distribution of these ratios across all functions.\footnote{The statistical results shown are from [Request Table Module, Region 4] part in dataset~\cite{huawei_dataset}. We observed similar distributions across different parts of the dataset.} The distribution is highly dispersed, with ratios ranging from 0.09 to 10.10 and a high CV of 62.43\%, indicating that some functions are extremely compute-intensive while others are predominantly memory-intensive. This substantial variation in intrinsic resource profiles implies that a resource allocation strategy that is unaware of such differences is prone to creating resource fragmentation.
 
-Figure~\ref{fig:ratio_stability_scatter} further examines how CPU and memory usage co-vary within individual functions as request inputs change.\footnote{Benchmark names are abbreviated in the figure for readability; their full identifiers are listed in Table~\ref{tab:setup}.} Each point represents the mean usage for one input, and the line is a per-function linear fit. The distinct slopes across functions reinforce the need to account for function-specific resource profiles, while deviations from the fitted lines capture input-dependent variation within a function.
+Figure~\ref{fig:ratio_stability_scatter} further examines how CPU and memory
+usage co-vary as request inputs change. We randomly select ten functions from
+the open-source SeBS serverless benchmarking suite~\cite{copik2021sebs}, covering
+Web, multimedia, utility, machine-learning, and scientific workloads; their full
+names and characteristics are listed in Table~\ref{tab:setup}. For each input,
+we measure the CPU time consumed and peak memory usage during task execution,
+averaged across repeated runs. Each point represents one input, and the red line
+is a per-function linear fit. The reported $R^2$ measures the goodness of fit,
+while CV is the coefficient of variation of the per-input CPU-to-memory ratios.
+The figure omits graph-mst due to space because it closely matches graph-bfs
+($R^2=0.996$, CV=27.9\%).
+
+Eight of the ten benchmarks exhibit strong input-dependent CPU--memory coupling:
+their CPU and memory demands increase along a stable function-specific direction,
+with linear-fit $R^2$ values between 0.974 and 0.999 and ratio CVs from 5.2\% to
+29.7\%. Thus, although inputs change demand magnitude, the relative resource
+profile remains broadly stable and does not typically switch between compute-
+and memory-intensive behavior. This property follows naturally from the
+fine-grained, single-purpose design of serverless functions: each invocation
+performs a well-defined task, while complex applications are commonly decomposed
+into multiple such functions. The remaining two benchmarks, video-processing
+and uploader, exhibit a streaming pattern in which peak memory remains nearly
+constant while CPU consumption grows with the processed input.
 
 \begin{figure}[t]
   \centering
   \includegraphics[width=\linewidth]{figures/fig_ratio_stability_grid.pdf} \\ [-10pt]
-  \caption{CPU and memory usage across request inputs for nine serverless functions. Each line shows a per-function linear fit.}
+  \caption{CPU and memory usage across request inputs for serverless functions.}
   \label{fig:ratio_stability_scatter}
   \vspace{-12pt}
 \end{figure}
@@ -90,7 +112,7 @@ Therefore, an intelligent placement strategy must anticipate and mitigate the di
 
 \parabf{Challenge \#2: High overhead of downsizing.} Dynamic in-place scaling is asymmetric: upsizing is swift, but downsizing incurs high costs. Increasing the memory allocation takes effect immediately, whereas reducing it triggers a restart which involves cgroup reclamation, page-cache eviction, and compaction, potentially stalling both runtime and kernel. Since resizing is on the critical path of request handling, this expensive downsizing process can directly degrade both overall throughput and end-to-end latency.
 
-This asymmetry creates a fundamental dilemma for naive instance resizing strategies. If an instance undergoes eager bidirectional resizing for every request, the high downsizing costs identified above incur prohibitive memory reclamation overheads and disrupt page caches and JIT states. Conversely, a increment-only strategy that avoids downsizing inevitably leads to severe over-provisioning, as instances accumulate resources to match their historical peak demand. In either case, the theoretical advantages of dynamic scaling are negated. These inefficiencies are illustrated in Figure~\ref{fig:vertical_scaling_scheduling}, which contrasts the reclamation overhead of bidirectional resizing with the wasted headroom of increment-only resizing.
+This asymmetry creates a fundamental dilemma for naive instance resizing strategies. If an instance undergoes eager bidirectional resizing for every request, the high downsizing costs identified above incur prohibitive memory reclamation overheads and disrupt page caches and JIT states. Conversely, an increment-only strategy that avoids downsizing inevitably leads to severe over-provisioning, as instances accumulate resources to match their historical peak demand. In either case, the theoretical advantages of dynamic scaling are negated. These inefficiencies are illustrated in Figure~\ref{fig:vertical_scaling_scheduling}, which contrasts the reclamation overhead of bidirectional resizing with the wasted headroom of increment-only resizing.
 
 Practical dynamic resource allocation must achieve the following goal: it should adapt resource allocation to varying request-level demands without incurring significant overheads of frequent downsizing. This necessitates a mechanism that can batch or reorder requests to create resource usage patterns that are favorable to increment-only adjustments within short time windows, thereby amortizing reclamation costs and preserving warm instance state.
 

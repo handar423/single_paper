@@ -50,7 +50,11 @@ more nuanced. We characterize it along three orthogonal dimensions:
     indicates a function's resource affinity: a relatively small $r_i$ signifies 
     memory-intensive behavior, whereas a relatively large $r_i$ corresponds to 
     compute-intensive behavior. To reduce problem complexity, we assume this 
-    ratio remains invariant across requests of the same function.
+    ratio remains invariant across requests of the same function. This assumption
+    is consistent with the stable CPU-to-memory profiles observed for most of our
+    evaluated benchmarks (Figure~\ref{fig:ratio_stability_scatter}). We discuss
+    the single-resource-dominant exceptions and the scope of this model in
+    \S\ref{sec:discussion}.
 
     \item \textbf{Demand Volume ($\mathbf{V}_i$)}: The aggregate resource demand 
     vector for function $F_i$ within the scheduling window, denoted as 
@@ -98,7 +102,7 @@ complementary routing and proportional workload distribution simultaneously.
     \State
     
     \State \textbf{// Step 2: Main optimization loop}
-    \While{$\exists \; F_i \text{ s.t. } R[i] > 0$} \Comment{Mapping incompletement}
+    \While{$\exists \; F_i \text{ s.t. } R[i] > 0$} \Comment{Incomplete mapping}
         \State $F_a \gets \text{RandomChoice}(\{F_i \mid R[i] > 0\})$ 
         \For{$N_j \in \mathcal{N}$}
             \State \textbf{// Assignment via free capacity}
@@ -312,7 +316,7 @@ in Algorithm~\ref{alg:placement}.
 \parabf{Low Overhead via Partial Updates.} To keep the scheduling overhead low, 
 the routing algorithm employs an incremental (partial) update mechanism. Rather 
 than recomputing the full routing plan from scratch for every scheduling window, the 
-system periodically (every five minutes in our implementation) monitors the latest 
+system periodically monitors the latest 
 demand profiles $\langle r_i, \mathbf{V}_i, D_i \rangle$ of all functions. For 
 a function whose aggregate demand $\mathbf{V}_i$ has not increased and demand 
 distribution $D_i$ remains statistically stable, the algorithm preserves its 
@@ -334,7 +338,7 @@ state, ensuring long-term placement quality.
   \centering
   \includegraphics[width=0.8\linewidth]{figures/design/scheduling.pdf}
   \vspace{-10pt}
-  \caption{Monotonic acale-up scheduling workflow.}
+  \caption{Monotonic scale-up scheduling workflow.}
   \vspace{-15pt}
   \label{fig:scheduler-arch}
 \end{figure}

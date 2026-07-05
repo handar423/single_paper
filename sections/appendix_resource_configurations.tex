@@ -1,0 +1,38 @@
+\section{Reference Resource Configurations}
+\label{app:resource-configurations}
+
+Table~\ref{tab:supp-resource-config} reports the resource configurations used
+in the system experiments. These configurations are conservative empirical
+values selected according to the observed end-to-end runtime behavior of each
+benchmark, including task execution, runtime state, and input/output processing.
+They are applied consistently to COSMOS and all baselines. The allocation ratio
+is the configured CPU-to-memory ratio used to construct CPU allocations from
+the memory-demand distributions in the evaluation.
+
+\begin{table}[t]
+    \caption{Resource configurations used in the system experiments.}
+    \label{tab:supp-resource-config}
+    \centering
+    \small
+    \setlength{\tabcolsep}{4pt}
+    \resizebox{0.9\columnwidth}{!}{%
+    \begin{tabular}{l c c c}
+        \toprule
+        \textbf{Workload} & \makecell[c]{\textbf{CPU Config.} \\ \textbf{(cores)}} &
+        \makecell[c]{\textbf{Mem. Config.} \\ \textbf{(GB)}} &
+        \makecell[c]{\textbf{Alloc. Ratio} \\ \textbf{(core/GB)}} \\
+        \midrule
+        graph-bfs          & 1.5 & 1.0 & 1.50 \\
+        graph-mst          & 1.5 & 1.0 & 1.50 \\
+        graph-pagerank     & 4.0 & 4.0 & 1.00 \\
+        dna-visualisation  & 1.0 & 2.0 & 0.50 \\
+        compression        & 1.0 & 2.0 & 0.50 \\
+        image-recognition  & 2.5 & 4.0 & 0.63 \\
+        thumbnailer        & 0.5 & 2.0 & 0.25 \\
+        video-processing   & 1.5 & 4.0 & 0.38 \\
+        dynamic-html       & 1.0 & 1.0 & 1.00 \\
+        uploader           & 2.0 & 2.0 & 1.00 \\
+        \bottomrule
+    \end{tabular}
+    }
+\end{table}
