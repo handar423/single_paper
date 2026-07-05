@@ -4,8 +4,9 @@
 \vspace{-3pt}
 
 In this section, we first evaluate the overall performance of \sysname against 
-state-of-the-art systems\textemdash Palette~\cite{abdi2023palette} and 
-FaaSCache~\cite{FaaSCache}\textemdash in \S\ref{sec:experiments_comparsion}. Next, 
+state-of-the-art systems\textemdash Palette~\cite{abdi2023palette}, 
+FaaSCache~\cite{FaaSCache}, and Golgi~\cite{soccGolgi}\textemdash in 
+\S\ref{sec:experiments_comparsion}. Next, 
 we conduct an in-depth analysis of the effectiveness of the key techniques 
 employed in \sysname in \S\ref{sec:experiments_technique}. Finally, we investigate 
 the scalability of \sysname in large-scale cluster environments in \S\ref{sec:experiments_overhead}.
@@ -23,12 +24,12 @@ the scalability of \sysname in large-scale cluster environments in \S\ref{sec:ex
         graph-mst      & Scientific     & 1.5 & 1.0 & 4.2 & 1.50 & Computing minimum spanning tree using igraph. \\
         graph-pagerank & Scientific     & 4.0 & 4.0 & 21.5 & 1.00 & PageRank algorithm execution with igraph. \\
         dna-visualisation & Scientific & 1.0 & 2.0 & 7.6 & 0.50 & Generating visualization data from DNA sequences. \\
-        dynamic-html   & Webapps        & 1.0 & 1.0 & 0.15 & 1.00 & Rendering dynamic HTML content from a template. \\
-        uploader       & Webapps        & 2.0 & 2.0 & 2.5 & 1.00 & Uploading files from a given URL to cloud storage. \\
         compression    & Utilities      & 1.0 & 2.0 & 1.5 & 0.50 & Compressing multiple files into a ZIP archive for download. \\
         image-recognition & ML          & 2.5 & 4.0 & 1.6 & 0.63 & Performing image classification using ResNet and PyTorch. \\
         thumbnailer    & Multimedia     & 0.5 & 2.0 & 5.0 & 0.25 & Creating thumbnail images from input pictures. \\
         video-processing & Multimedia   & 1.5 & 4.0 & 11.0 & 0.38 & Adding watermarks and generating GIFs from video files. \\
+        dynamic-html   & Webapps        & 1.0 & 1.0 & 0.15 & 1.00 & Rendering dynamic HTML content from a template. \\
+        uploader       & Webapps        & 2.0 & 2.0 & 2.5 & 1.00 & Uploading files from a given URL to cloud storage. \\
         \bottomrule
         \vspace{-20pt}
     \end{tabular}
@@ -57,13 +58,17 @@ Azure Functions Dataset~\cite{ShahradFGCBCLTR20}. For each benchmark, we randoml
 sample a function invocation trace from the top 20\% most frequently invoked 
 functions, which account for the majority of resource consumption in production 
 environments~\cite{ShahradFGCBCLTR20}, representing the critical bottleneck for 
-cluster performance optimization. Each trace's invocation rate is proportionally 
-scaled so that the aggregated resource demand approaches the total cluster capacity, 
-and the invocation frequencies across the ten benchmarks are adjusted to be nearly 
+cluster performance optimization. The sum invocation count across the ten benchmarks are adjusted to be nearly 
 identical, with relative differences under 2\%. Given that the original trace 
 data is recorded at minute-level granularity, intra-minute request arrivals are 
 modeled as a Poisson process, a standard approach for independent random events 
-in systems and performance~analysis~\cite{Gallager2013Stochastic}. 
+in systems and performance~analysis~\cite{Gallager2013Stochastic}. Across the ten
+function traces, the invocation-rate CV averages 55.36\% and ranges from 28.52\%
+to 97.23\%, providing substantial temporal variation for evaluating \sysname
+under bursty and dynamically changing workloads. For each cluster capacity, we
+construct different offered-load levels by proportionally scaling all traces,
+thereby preserving their temporal patterns and preventing differences in trace
+shape from confounding the comparison.
 
 To accurately model real-world serverless functions, we first analyze 
 the resource usage distribution in the Azure Functions dataset~\cite{ShahradFGCBCLTR20}. 
@@ -87,21 +92,40 @@ a subset of its total resources. Unless otherwise specified, the available resou
 proportions across nodes are sampled from a normal distribution with a standard 
 deviation~of~0.85.
 
-\parabf{Baselines.} We evaluate \sysname against two state-of-the-art resource 
-management approaches for serverless platforms, both of which optimize cluster 
-efficiency from complementary perspectives. For Palette, each benchmark is assigned 
-a unique color, and functions with the same color are co-located on the same server 
-to enhance spatial locality. Inspired by caching systems, FaaSCache employs a 
-Greedy-Dual keep-alive strategy, which assigns a priority to each kept-alive 
-instance and evicts low-priority instances first under resource pressure. To 
-ensure fair comparison and minimize engineering artifacts, we reimplement both 
-baselines in our prototype environment. Other components of the prototype system 
-are kept identical across all evaluated systems.
+\parabf{Baselines.} We evaluate \sysname against three state-of-the-art resource
+management approaches for serverless platforms, which optimize cluster efficiency
+from complementary perspectives:
+\begin{itemize}
+    \item \textbf{Palette}~\cite{abdi2023palette}: Each benchmark is assigned a
+    unique color, and functions with the same color are co-located on the same
+    server to enhance spatial locality.
+
+    \item \textbf{FaaSCache}~\cite{FaaSCache}: Inspired by caching systems,
+    FaaSCache employs a Greedy-Dual keep-alive strategy that assigns a priority
+    to each kept-alive instance and evicts low-priority instances first under
+    resource pressure.
+
+    \item \textbf{Golgi}~\cite{soccGolgi}: Golgi monitors overcommitment effectiveness
+    using low-level runtime metrics and employs Mondrian Forest models to
+    route requests between overcommitted and non-overcommitted instances. Since
+    \sysname does not support the intra-instance concurrency control of Golgi, we
+    approximate it by adjusting instance resource allocations. We implement
+    \textbf{Golgi} with this equivalent mechanism and \textbf{Golgi-NoCC}
+    without it. Golgi reports that disabling concurrency control changes Golgi
+    performance by at most 14\%~\cite{soccGolgi}, suggesting that performance detection and
+    Mondrian Forest-based routing account for most of its system advantages.
+\end{itemize}
+
+Among these three baselines, only FaaSCache provides a publicly available
+implementation. To ensure a fair comparison and minimize engineering artifacts,
+we reimplement all three baselines in our prototype following their respective
+papers. Other components of the prototype system are kept identical across all
+evaluated systems.
 
 \parabf{Metric.} We evaluate system performance using CPU/memory utilization 
 and task throughput as primary metrics. To verify that the scheduling algorithm 
-in \sysname does not lead to task starvation, we also compare the 95th percentile 
-tail latency of task processing. Each data point is collected from a one-hour 
+in \sysname does not lead to task starvation, we also compare the 99th percentile 
+tail latency of task processing. Each data point is averaged from three half-hour 
 test run, with the first five minutes of data excluded to eliminate the impact 
 of initial cold starts.
 
@@ -111,197 +135,93 @@ of initial cold starts.
 
 \begin{figure*}[t]
     \centering
-    \subfloat[]{\includegraphics[width=0.32\linewidth]{figures/Eval/distribution_CPU Utilization.pdf}%
-    \label{fig:eval_dis_cpu}}
+    \includegraphics[width=0.68\linewidth]{figures/fig_main_legend.pdf}\\[-10pt]
+    \subfloat[]{\includegraphics[width=0.32\linewidth]{figures/fig_main_cpu.pdf}%
+    \label{fig:main_cpu}}
     \hfil
-    \subfloat[]{\includegraphics[width=0.32\linewidth]{figures/Eval/16worker_distribution_Memory Utilization.pdf}%
-    \label{fig:eval_dis_memory}}
+    \subfloat[]{\includegraphics[width=0.32\linewidth]{figures/fig_main_mem.pdf}%
+    \label{fig:main_mem}}
     \hfil
-    \subfloat[]{\includegraphics[width=0.32\linewidth]{figures/Eval/distribution_Task throughput.pdf}%
-    \label{fig:eval_dis_throughput}}
-    \caption{Performance comparison under different cluster resource distributions. (a) CPU Utilization. (b) Memory Utilization. (c) Task throughput.}
-    \vspace{-15pt}
-\label{fig:eval_dis}
+    \subfloat[]{\includegraphics[width=0.32\linewidth]{figures/fig_main_throughput.pdf}%
+    \label{fig:main_throughput}}
+    \caption{Main-experiment comparison across offered loads: (a) CPU utilization,
+    (b) memory utilization, and (c) task throughput. All panels share the legend.}
+    \label{fig:main_resources}
 \end{figure*}
-
-To better demonstrate the performance of \sysname under different deployment 
-scenarios, we first compare the overall performance between \sysname and baselines 
-under different cluster resource distributions, benchmark numbers and workload 
-distributions.
-
-\parabf{Comparison under different cluster resource distributions.} Figure~\ref{fig:eval_dis} 
-compares the performance of \sysname and baselines under different cluster resource 
-distributions. We introduce two resource availability patterns: uniform 
-and Zipf distributions. Under the uniform distribution, each server is configured 
-with 75\% of its total resources available. In the Zipf-based distribution, the 
-fraction of available resources per server follows a Zipf distribution parameterized 
-with $\alpha = 0.8$ across $n = 8$ resource tiers. 
-
-Across all resource distribution patterns, \sysname consistently improves both 
-CPU and memory utilization, achieving relative improvements of 43.61\%--55.53\%
-and 41.41\%--67.01\% over the baselines, respectively. Furthermore, \sysname 
-demonstrates performance gains in task throughput, with improvements ranging from 
-51.52\% to 103.71\%.
-
-To verify the potential concern of task starvation, we examine the impact on 
-end-to-end performance. As shown in Table~\ref{tab:latency}, \sysname reduces 
-the overall 95th percentile latency by 30.63\%--42.42\% compared to the baselines. 
-This result indicates that the efficiency gains of \sysname are not achieved by 
-systematically delaying particular functions. Instead, the improvement 
-in resource utilization and throughput is achieved alongside enhanced and more 
-predictable end-to-end performance, even when co-locating diverse benchmarks with 
-varying resource demands and execution characteristics.
-
-The performance gains of \sysname are primarily attributed to two mechanisms. 
-First, the complementary swarming request routing enables individual 
-nodes to serve fewer functions, thereby increasing instance reuse probability. 
-This approach also aligns node workload with resource capacity, avoiding resource 
-waste caused by load-resource mismatch. Second, the monotonic scale-up 
-scheduling policy reduces both resource over-provisioning and cold-start frequency, 
-further boosting overall resource utilization.
-
-\begin{table}[t]
-    \vspace{-5pt}
-    \caption{Tail latency comparison between \sysname and baselines.\label{tab:latency}}
-    \begin{tabularx}{0.47\textwidth}{ 
-        >{\raggedright\arraybackslash}X 
-        >{\centering\arraybackslash}X
-        >{\centering\arraybackslash}X
-        >{\centering\arraybackslash}X }
-        \toprule
-        \multirow{2}{*}{\makecell[l]{\textbf{Resource} \\ \textbf{Distribution}}} & \multicolumn{3}{c}{\textbf{95th Tail Latency (s)}} \\ \cline{2-4}
-         & \raisebox{-1pt}{\textbf{Palette}} & \raisebox{-1pt}{\textbf{FaaSCache}} & \raisebox{-1pt}{\textbf{\sysname}} \\
-        \hline 
-        Norm-85 & 1071 & 1104 & \textbf{743} \\
-        Uniform-75\%& 1054 & 1063 & \textbf{729} \\
-        Zipf-80 & 1372 & 1335 & \textbf{790} \\
-        \bottomrule
-    \end{tabularx}
-\end{table}
-
-\begin{figure*}[t]
-    \centering
-    \subfloat[]{\includegraphics[width=0.32\linewidth]{figures/Eval/func_number_CPU Utilization.pdf}%
-    \label{fig:eval_function_cpu}}
-    \hfil
-    \subfloat[]{\includegraphics[width=0.32\linewidth]{figures/Eval/func_number_Memory Utilization.pdf}%
-    \label{fig:eval_function_memory}}
-    \hfil
-    \subfloat[]{\includegraphics[width=0.32\linewidth]{figures/Eval/func_number_Task throughput.pdf}%
-    \label{fig:eval_function_throughput}}
-    \caption{Performance comparison under different function numbers. (a) CPU Utilization. (b) Memory Utilization. (c) Task throughput.}
-    \vspace{-15pt}
-\label{fig:eval_function}
-\end{figure*}
-
-\parabf{Comparison under different benchmark numbers.}
-Next, we evaluate \sysname and the baselines under different workload scales. 
-Beyond the default configuration of 10 benchmarks, we provide two additional scenarios:
-
-\begin{itemize}
-    \item \textbf{5 benchmarks}: A randomly selected subset comprising \textbf{video-processing}, 
-    \textbf{graph-pagerank}, \textbf{image-recognition}, \textbf{dna-visualization}, 
-    and \textbf{thumbnailer}. To maintain comparable total load, the 
-    invocation rate for each function in this set is doubled;
-
-    \item \textbf{20 benchmarks}: The original 10 benchmarks plus their replicas. Each 
-    replica has the same code, resource profile, and runtime as the original but 
-    is considered a distinct function, preventing instance reuse between the 
-    original-replica pairs. The invocation rate per function is halved to 
-    maintain the aggregate user traffic.
-\end{itemize}
-
-As shown in Figure~\ref{fig:eval_function}, the performance advantage of \sysname 
-over the baselines grows as the number of benchmarks increases from 5 to 20. 
-Specifically, the improvement in CPU utilization rises from 17.40\%--16.90\% 
-to 44.89\%--44.06\%, memory utilization gains increase from 41.81\%--43.26\% 
-to 55.42\%--57.37\%, and task throughput improvements expand from 45.22\%--51.06\% 
-to 75.45\%--78.98\%.
-
-This scaling trend can be attributed to the complementary swarming routing. With 
-fewer benchmarks, each node already operates on a limited set of functions, 
-leaving limited room for further optimization through instance reuse. In contrast, 
-when the workload is larger and more diverse, the routing reduces the number of 
-distinct functions each node handles. This effect elevates the instance reuse 
-rate, which in turn improves overall~efficiency.
-
-\begin{figure*}[t]
-    \centering
-    \subfloat[]{\includegraphics[width=0.32\linewidth]{figures/Eval/skew_CPU Utilization.pdf}%
-    \label{fig:eval_workload_cpu}}
-    \hfil
-    \subfloat[]{\includegraphics[width=0.32\linewidth]{figures/Eval/skew_Memory Utilization.pdf}%
-    \label{fig:eval_workload_memory}}
-    \hfil
-    \subfloat[]{\includegraphics[width=0.32\linewidth]{figures/Eval/skew_Task throughput.pdf}%
-    \label{fig:eval_workload_throughput}}
-    \caption{Performance comparison under different workload distributions. (a) CPU Utilization. (b) Memory Utilization. (c) Task throughput.}
-    \vspace{-10pt}
-\label{fig:eval_workload}
-\end{figure*}
-
-\parabf{Comparison under different workload distributions.} 
-Finally, we examine the impact of workload distribution on scheduling performance. 
-In addition to the default resource distribution, 
-we introduce a Zipf-based load pattern. Specifically, we adjust the $\alpha$ parameter 
-of a Zipf distribution (with n = 10) to obtain a probability set that approximates 
-the Pareto principle (\emph{i.e.}, the 80/20 rule), where the sum of the two largest 
-probabilities is about 0.8. We then scale the invocation rate of each benchmark 
-according to this distribution, preserving the total aggregate invocation frequency 
-while ensuring that the two most frequently invoked functions\textemdash randomly chosen as 
-\textbf{thumbnailer} and \textbf{video-processing}\textemdash collectively account for 80\% 
-of all invocations.
-
-It can be observed from Figure~\ref{fig:eval_workload} that, compared to the default 
-uniform distribution, the optimization margin of \sysname under the Zipf workload 
-distribution is relatively smaller. Under the Zipf distribution, \sysname achieves 
-an increase in CPU utilization of 23.20\%--23.58\%, memory utilization of 
-27.04\%--28.50\%, and task throughput of 29.20\%--31.34\% over the~baselines.
-
-This result stems from our experimental configuration: the Zipf distribution 
-adhering to the 80/20 rule implies that only two functions bear the majority of 
-the workload, which naturally grants them more instance reuse opportunities. In 
-contrast, while the real-world workload distribution also exhibits skew, it 
-involves a larger number of high-load functions competing for node resources 
-simultaneously. This competition creates more optimization potential for 
-\sysname. Moreover, even with only two high-load functions, \sysname 
-still achieves around 20\%--30\% higher resource utilization and task throughput 
-than the baselines. This gain is primarily because the monotonic scale-up 
-scheduling policy reduces both instance resource over-provisioning and 
-cold-start frequency.
 
 \begin{figure}[t]
     \centering
-    \subfloat[]{\includegraphics[width=0.9\linewidth]{figures/Eval/detail_cpu.pdf}%
-    \label{fig:eval_detail_cpu}}
+    \includegraphics[width=\columnwidth]{figures/fig_main_latency.pdf}\\[-10pt]
+    \caption{99th-percentile tail latency across offered loads.} 
+    \label{fig:main_latency}
+\end{figure}
+
+Figures~\ref{fig:main_resources} and~\ref{fig:main_latency}
+compare \sysname with the baselines across offered loads from 5\% to 200\% of
+cluster capacity. Unless otherwise stated, all reported differences are relative
+to the best-performing baseline for the corresponding metric at each load. At
+light loads (5\%--30\%), all systems achieve nearly identical
+throughput, with differences within 5.82\%, because resources are abundant and
+scheduling efficiency is not yet a bottleneck. The baselines also perform similarly,
+except that Golgi generally incurs higher tail latency, suggesting that its relatively
+aggressive overcommitment impairs execution efficiency. At 30\% load, \sysname
+exhibits 14.40\% lower CPU utilization and 7.98\% lower memory utilization. This lower resource consumption results from fewer cold starts.
+
+The advantage of \sysname emerges as the offered load approaches cluster capacity.
+At 45\% load, \sysname improves throughput by 12.83\% and reduces the
+99th-percentile latency by 78.77\%. From 60\% to 200\% load, all baselines reach
+a similar throughput ceiling. In contrast, \sysname improves CPU utilization
+by 28.34\%--46.91\%, memory utilization by
+27.76\%--45.00\%, and throughput by 35.63\%--101.31\%. Over the same range,
+\sysname reduces the 99th-percentile latency by 8.19\%--28.94\%, showing that
+its throughput gains do not compromise tail latency.
+
+These gains stem from two complementary mechanisms. Complementary swarming limits
+the functions served by each node to improve instance reuse, while matching their
+resource profiles to node capacity to reduce fragmentation. Monotonic scale-up
+further reduces over-provisioning and cold starts, enabling \sysname to sustain
+higher utilization and throughput as load increases.
+
+\subsection{Performance Analysis}
+\label{sec:experiments_analysis}
+
+This subsection further analyzes the sources of \sysname's performance gains
+through a resource-consumption breakdown, the system behavior under bursty workloads,
+the performance impact of routing-plan updates, and the practical effectiveness
+of monotonic scale-up, as well as its robustness to demand-prediction errors.
+
+\parabf{Detail resource consumption.} We first examine how \sysname changes resource consumption during task processing.
+Figure~\ref{fig:eval_detail} breaks down the average CPU and memory capacity of
+\sysname and the baselines into the following four categories:
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=0.82\linewidth]{figures/fig_resource_breakdown_legend.pdf}\\[-5pt]
+    \subfloat[]{\includegraphics[width=\linewidth]{figures/fig_resource_breakdown_cpu.pdf}%
+    \label{fig:eval_detail_cpu}} \\[-10pt]
     \hfil
-    \vspace{-7pt}
-    \subfloat[]{\includegraphics[width=0.9\linewidth]{figures/Eval/detail_memory.pdf}%
+    \subfloat[]{\includegraphics[width=\linewidth]{figures/fig_resource_breakdown_mem.pdf}%
     \label{fig:eval_detail_memory}}
-    \caption{Detail Resource Comsupmtion of \sysname and baselines. (a) CPU Detail Comsupmtion. (b) Memory Detail Comsupmtion.}
+    \caption{Resource usage breakdown of \sysname and the baselines under the
+    default configuration at 100\% offered load: (a) CPU and (b) memory.}
     \vspace{-10pt}
 \label{fig:eval_detail}
 \end{figure}
 
-\parabf{Performance analysis.} To further illustrate the reasons behind \sysname's 
-performance advantage, Figure~\ref{fig:eval_detail} provides a detailed 
-illustration of the average resource consumption of \sysname and the baselines 
-during task processing in the default evaluation setting. We categorize CPU and 
-memory resources into the following 
-four types: 
-
 \begin{itemize}
     \item \textbf{Task Execution}: resources allocated for processing tasks;
-    \item \textbf{Cold Start}: resources consumed during the initialization of instances;
-    \item \textbf{Standby Instance}: resources held by ready but currently idle instances;
+    \item \textbf{Cold Start}: resources consumed for instance initialization;
+    \item \textbf{Standby Instance}: resources held by idle instances;
     \item \textbf{Idle Resource}: available but unallocated resources.
 \end{itemize}
 
-Taking CPU utilization as an example, compared to the baselines, \sysname increases 
-the resource share for Task Execution by 45.47\%--43.61\%, for Standby Instance 
-by 110.87\%--125.58\%, and for Idle Resource by 43.59\%--47.37\%, while 
-it reduces the share for Cold Start by 83.65\%--83.56\%. A similar trend is 
-observed for memory utilization.
+At 100\% offered load, \sysname increases the task-execution share of CPU and
+memory by 37.34\% and 44.84\%, respectively, over the best-performing baseline.
+Meanwhile, it reduces the corresponding cold-start shares by 77.46\% and
+78.34\%, and increases the standby-instance shares by 19.01\% and 22.38\%.
+Despite processing substantially more tasks, \sysname retains 85.77\% more idle
+CPU than the baseline with the largest idle CPU share, while its idle memory
+share remains within 2.24\% of all baselines.
 
 The resource utilization advantage of \sysname stems from the reduction in cold 
 starts. This is achieved through two strategies. First, the complementary swarming 
@@ -315,10 +235,281 @@ The resources conserved from fewer cold starts not only increase the share for
 task execution but also expand the pool of idle resources and standby instances, 
 facilitating container reuse and in-place scaling.
 
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=\columnwidth]{figures/fig_temporal_coldstart_latency.pdf} \\ [-10pt]
+    \caption{Minute-level cold-start rate and 99th tail latency under bursty load
+    at 45\% offered load.
+    Dashed vertical lines mark \sysname routing strategy updates, and shaded regions
+    indicate detected burst windows.}
+    \label{fig:temporal_coldstart_latency}
+    \vspace{-10pt}
+\end{figure}
+
+\looseness=-1
+\parabf{Bursty workloads handling.} Figure~\ref{fig:temporal_coldstart_latency}
+shows the Minute-level cold-start rate and 99th tail latency after excluding the first five minutes of system warm-up. We use 45\% offered load because the baselines already exhibit
+substantial request backlogs at 100\% load.
+
+At approximately minute 26-28, the invocation rate of \textbf{graph-pagerank} rises
+by about $5\times$. This burst is particularly challenging because
+\textbf{graph-pagerank} is among the most resource-demanding benchmarks. 
+As shown in the figure, the burst
+causes sharp increases in both cold starts and tail latency for all systems.
+Nevertheless, \sysname incurs fewer cold starts and a smaller latency spike than
+the baselines, and its tail latency quickly returns toward its pre-burst level. In contrast, the baselines retain elevated tail latency
+and recover more slowly.
+
+This difference arises because complementary swarming confines individual function
+demand fluctuations to a small subset of servers, while the resulting
+resource-complementary load mix mitigates intra-server resource contention.
+Together, these properties limit both the cluster-wide impact of a burst and its
+performance interference with other functions. The baselines lack this isolation,
+allowing burst-induced contention and request backlogs to affect more servers
+and prolong latency recovery. For sustained workload changes, \sysname revises
+the cluster load partition at the next routing-plan update, continuously
+realigning resource allocation with workload demand.
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=\columnwidth]{figures/fig_swap_analysis.pdf} \\ [-10pt]
+    \caption{Per-function share of demand relocated by consecutive \sysname
+    routing strategy updates for Figure~\ref{fig:temporal_coldstart_latency}.}
+    \label{fig:swap_analysis}
+    \vspace{-10pt}
+\end{figure}
+
+\begin{table}[t]
+    \centering
+    \caption{Average pod eviction rate among COSMOS and baselines for Figure~\ref{fig:temporal_coldstart_latency}.}
+    \label{tab:avg_eviction_rate}
+    \footnotesize
+    \setlength{\tabcolsep}{2.5pt}
+    \begin{tabular}{@{}l c c c c c@{}}
+        \toprule
+        \textbf{System} & \textbf{Palette} & \textbf{FaaSCache} & \textbf{Golgi} &
+        \makecell[c]{\textbf{Golgi-} \\ \textbf{NoCC}} & \textbf{COSMOS} \\
+        \midrule
+        \makecell[l]{Average rate \\ (events/min)} & 5.433 & 4.500 & 8.967 & 3.633 & \textbf{1.433} \\
+        \bottomrule
+    \end{tabular}
+    \vspace{-8pt}
+\end{table}
+
+\parabf{Impact of routing updates.} Figure~\ref{fig:swap_analysis} and
+Table~\ref{tab:avg_eviction_rate} further examine the routing updates in the
+experiment shown in Figure~\ref{fig:temporal_coldstart_latency}. The figure
+decomposes, by function, the fraction of demand relocated at six consecutive
+routing updates, while the table compares the resulting average pod eviction
+rates. The odd-numbered updates relocate only 40.4\%--51.8\% of total demand,
+substantially less than the 72.0\%--76.9\% relocated by the even-numbered updates,
+because \sysname uses local updates whenever the existing partition can be
+adjusted without full re-optimization.
+
+The overall relocated share remains relatively high because \sysname deliberately
+adopts an aggressive reallocation policy: upon detecting an increase in a
+function's load, it reallocates that function's full demand rather than only the
+increment. This design prioritizes concentrating each function on fewer servers,
+as function concentration has a greater performance impact than minimizing the
+magnitude of each load adjustment. Despite this aggressiveness,
+Figure~\ref{fig:temporal_coldstart_latency} shows that \sysname still incurs fewer
+cold starts than the baselines and, outside the burst window, exhibits no
+tail-latency spikes at routing-update times. Moreover, its eviction rate is
+1.433 events/min, 60.6\% lower than the
+best baseline in Table~\ref{tab:avg_eviction_rate}. Together, these results indicate
+that neither load partitioning nor demand relocation introduces observable
+performance instability.
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=0.85\columnwidth]{figures/fig_scaleup_absorption.pdf} \\ [-10pt]
+    \caption{Fraction of scale-up events that cause pod eviction across offered loads.}
+    \label{fig:scaleup_absorption}
+    \vspace{-10pt}
+\end{figure}
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=\columnwidth]{figures/fig_instance_lifetime_cdf.pdf} \\ [-10pt]
+    \caption{CDFs of instance lifetimes for representative functions in Figure~\ref{fig:temporal_coldstart_latency}.}
+    \label{fig:instance_lifetime_cdf}
+    \vspace{-10pt}
+\end{figure}
+
+\parabf{Instance eviction under monotonic scale-up.}
+Figure~\ref{fig:scaleup_absorption} reports the fraction of scale-up events that
+trigger pod eviction across offered loads, while
+Figure~\ref{fig:instance_lifetime_cdf} compares the instance-lifetime distributions
+of four representative functions. Together, the figures show that monotonic
+scale-up does not cause frequent eviction; instead, it improves instance stability
+and extends instance lifetimes.
+
+For \sysname, the fraction of scale-ups causing eviction first increases and then
+decreases with load. At light loads, eviction events initially grow faster than
+scale-up events. As load increases further, however, scale-ups become much more
+frequent and are predominantly absorbed by available node resources. From 45\%
+to 100\% load, the number of scale-up events increases by $6.34\times$, whereas
+the number causing eviction increases by only $1.48\times$; consequently, their
+fraction falls from 5.05\% to 1.18\%.
+Across \sysname and all baselines, fewer than 15\% of scale-up events cause an
+eviction, confirming that in-place scale-up usually preserves warm instances and
+thereby avoids additional cold starts.
+
+Consistent with this result, the CDFs in
+Figure~\ref{fig:instance_lifetime_cdf} are shifted toward longer lifetimes under
+\sysname, indicating lower instance churn. We observe the same trend for the
+other functions and offered loads.
+
+\begin{figure*}[t]
+    \centering
+    \includegraphics[width=0.94\linewidth]{figures/fig_robustness_legend.pdf}\\[-10pt]
+    \subfloat[]{\includegraphics[width=0.32\linewidth]{figures/fig_robustness_cpu.pdf}%
+    \label{fig:robustness_cpu}}
+    \hfil
+    \subfloat[]{\includegraphics[width=0.32\linewidth]{figures/fig_robustness_mem.pdf}%
+    \label{fig:robustness_mem}}
+    \hfil
+    \subfloat[]{\includegraphics[width=0.32\linewidth]{figures/fig_robustness_throughput.pdf}%
+    \label{fig:robustness_throughput}}
+    \caption{Robustness under demand-prediction errors across offered loads:
+    (a) CPU utilization, (b) memory utilization, and (c) task throughput.}
+    \label{fig:robustness}
+\end{figure*}
+
+\parabf{Impact of demand-prediction errors.}
+Figure~\ref{fig:robustness} compares \sysname's default demand predictor with
+$\pm$10\% and $\pm$20\% random errors, and $\pm$15\% systematic biases across
+offered loads. For readability, we show only Palette and FaaSCache as
+representative baselines. When offered load remains within cluster capacity,
+prediction errors have little effect because available resource slack can absorb
+moderate allocation inaccuracies: relative to the default predictor, throughput
+deviates by at most 9.79\%, while CPU and memory utilization deviate by at most
+13.70\% and 7.61\%, respectively. Once load exceeds cluster capacity (i.e., load
+$>$ cluster capacity), the curves become less stable: inaccurate predictions can
+create imbalanced allocations, producing deviations in both function performance
+and aggregate throughput. Nevertheless, all prediction-error variants retain a
+clear and consistent advantage over the baselines, indicating that \sysname's
+overall performance gains are robust to imperfect demand estimates.
+
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=0.86\linewidth]{figures/fig_gen_resource_dist_legend.pdf}\\[-10pt]
+    \subfloat[]{%
+        \includegraphics[width=0.552\linewidth]{figures/fig_gen_simple_compact.pdf}%
+        \label{fig:gen_simple}}
+    \hspace{-0.02\linewidth}
+    \subfloat[]{%
+        \includegraphics[width=0.410\linewidth]{figures/fig_gen_zipf_compact.pdf}%
+        \label{fig:gen_zipf}}
+    \\[-16pt]\makebox[\linewidth][c]{\footnotesize \qquad Load (\% of cluster capacity)}
+    \caption{Performance under different cluster resource distributions. Each
+    subfigure shows CPU utilization (top) and task throughput (bottom). (a) Uniform. (b) Zipf.}
+    \label{fig:gen_resource_dist}
+    \vspace{-10pt}
+\end{figure}
+
+\subsection{Generality}
+\label{sec:experiments_generality}
+
+We next evaluate the generality of \sysname under different cluster resource
+distributions, numbers of functions, and workload distributions. Due to space
+constraints, we report CPU utilization and task throughput as representative
+metrics of resource efficiency and system performance, respectively. Unless
+otherwise stated, improvements at 100\% offered load are relative to the
+best-performing baseline for each metric. Because Golgi and Golgi-NoCC exhibit
+only minor performance differences, we report only Golgi in the following
+generality experiments.
+
+\parabf{Resource distributions.} Figures~\ref{fig:gen_simple}
+and~\ref{fig:gen_zipf}
+compare performance under uniform and Zipf-distributed resource availability.
+The uniform setting exposes 75\% of each server's capacity, whereas the Zipf
+setting uses eight resource tiers with $\alpha=0.8$. Across both settings,
+\sysname follows the same overall trend as in the main experiment: its advantage
+becomes pronounced as load approaches capacity and persists under overload. At
+100\% load, \sysname improves CPU utilization by 37.63\% and 43.04\%, and
+throughput by 87.30\% and 90.10\%, under the uniform and Zipf settings,
+respectively. This consistency shows that complementary swarming remains
+effective when resource availability is either balanced or highly heterogeneous.
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=0.86\linewidth]{figures/fig_gen_funcnum_legend.pdf}\\[-10pt]
+    \subfloat[]{%
+        \includegraphics[width=0.552\linewidth]{figures/fig_gen_func5_compact.pdf}%
+        \label{fig:gen_func5}}
+    \hspace{-0.02\linewidth}
+    \subfloat[]{%
+        \includegraphics[width=0.410\linewidth]{figures/fig_gen_func20_compact.pdf}%
+        \label{fig:gen_func20}}
+    \\[-16pt]\makebox[\linewidth][c]{\footnotesize \qquad Load (\% of cluster capacity)}
+    \caption{Performance under different numbers of functions. Each subfigure
+    shows CPU utilization (top) and task throughput (bottom). (a) Five functions. (b) Twenty functions.}
+    \label{fig:gen_funcnum}
+    \vspace{-10pt}
+\end{figure}
+
+\parabf{Number of functions.}
+Next, we vary the number of functions from the default 10-function setting using
+two additional scenarios:
+
+\begin{itemize}
+    \item \textbf{5 benchmarks}: A randomly selected subset comprising \textbf{video-processing}, 
+    \textbf{graph-pagerank}, \textbf{image-recognition}, \textbf{dna-visualisation}, 
+    and \textbf{thumbnailer}. To maintain comparable total load, the 
+    invocation rate for each function in this set is doubled;
+
+    \item \textbf{20 benchmarks}: The original 10 benchmarks plus their replicas. Each 
+    replica has the same code, resource profile, and runtime as the original but 
+    is considered a distinct function, preventing instance reuse between the 
+    original-replica pairs. The invocation rate per function is halved to 
+    maintain the aggregate user traffic.
+\end{itemize}
+
+Figures~\ref{fig:gen_func5} and~\ref{fig:gen_func20} show that \sysname's
+advantage grows with workload diversity. At 100\% load, \sysname improves CPU
+utilization by 19.15\% and 42.73\%, and throughput by 70.44\% and 94.97\%, with
+5 and 20 functions, respectively. With fewer functions, each node already serves
+a relatively small function set, leaving less room to improve locality. As the
+function set grows, complementary swarming more effectively limits the distinct
+functions handled by each node and increases instance reuse.
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=0.86\linewidth]{figures/fig_gen_workload_legend.pdf}\\[-10pt]
+    \subfloat[]{%
+        \includegraphics[width=0.552\linewidth]{figures/fig_gen_workload_default_compact.pdf}%
+        \label{fig:gen_workload_default}}
+    \hspace{-0.02\linewidth}
+    \subfloat[]{%
+        \includegraphics[width=0.410\linewidth]{figures/fig_gen_skewed_compact.pdf}%
+        \label{fig:gen_skewed}}
+    \\[-16pt]\makebox[\linewidth][c]{\footnotesize \qquad Load (\% of cluster capacity)}
+    \caption{Performance under different workload distributions. Each subfigure
+    shows CPU utilization (top) and task throughput (bottom). (a) Default workload. (b) Skewed 20/80 workload.}
+    \label{fig:gen_workload_dist}
+    \vspace{-10pt}
+\end{figure}
+
+\parabf{Workload distributions.}
+Finally, we compare the default workload with an 80/20 skewed distribution while
+preserving the aggregate invocation rate. In the skewed setting,
+\textbf{thumbnailer} and \textbf{video-processing} collectively account for
+80\% of invocations. Figures~\ref{fig:gen_workload_default} and
+\ref{fig:gen_skewed} show that \sysname consistently outperforms the baselines,
+although its margin is smaller under the skewed workload. At 100\% load, \sysname
+improves CPU utilization by 37.34\% and throughput by 99.56\% under the default
+workload; under the 80/20 workload, the corresponding gains are 18.31\% and
+18.00\%. Concentrating most requests on two functions naturally increases their
+reuse opportunities even for the baselines, reducing the optimization headroom
+for complementary swarming. Nevertheless, \sysname retains a clear advantage,
+demonstrating robustness to highly skewed function popularity.
+
 {
 \begin{figure}[t]
     \centering
-    \includegraphics[width=0.97\linewidth]{figures/Eval/workflow_xiaorong.pdf}
+    \includegraphics[width=\columnwidth]{figures/fig_ablation.pdf} \\ [-10pt]
     \caption{Performance comparison among \sysname, baselines and simplified variants.}
     \label{fig:technique}
     \vspace{-15pt}
@@ -343,21 +534,20 @@ Figure~\ref{fig:technique} shows the performance comparison between \sysname and
 simplified variants. We also provide the evaluation results of the baselines for 
 reference.
 
-As shown, the performance of the Routing* version lies between the baselines 
-and \sysname. Compared to the baselines, it achieves improvements of 20.07\%--21.63\%, 
-16.90\%--17.23\%, and 17.31\%--15.74\% in CPU utilization, memory utilization, 
-and task throughput, respectively. However, it still falls short of \sysname by 
-16.39\%, 17.33\%, and 23.62\% in the metrics. These results demonstrate that the 
-complementary swarming routing strategy alone can effectively enhance performance. 
-Furthermore, it requires integration with the monotonic scale-up scheduling policy 
-for fine-grained, node-internal resource management to achieve better scheduling efficiency.
+As shown, Routing* performs between the baselines and \sysname. At 100\% offered
+load, it improves CPU utilization, memory utilization, and task throughput over
+the best-performing baseline by 14.71\%, 16.80\%, and 28.57\%, respectively.
+However, it remains below \sysname by 16.48\%, 19.36\%, and 35.57\% on the same
+metrics. These results show that complementary swarming alone improves resource
+efficiency and throughput, but requires monotonic scale-up for fine-grained
+intra-node resource management.
 
-The performance of the Scheduling* variant reveals a more nuanced trade-off. It 
-underperforms \sysname in resource utilization, with CPU and memory utilization 
-lower by 13.35\% and 29.99\%, respectively. Despite this, it achieves a 27.95\% 
-higher task throughput. This discrepancy occurs because Scheduling* prioritizes 
-tasks with lower resource demands, shorter execution times, and higher  
-frequencies, without explicitly optimizing for overall server utilization.
+Scheduling* exhibits a different trade-off. Its CPU and memory utilization are
+26.23\% and 12.19\% lower than \sysname, respectively, while its throughput is
+6.21\% higher. Without complementary routing, its node-local scheduler can favor
+requests that are immediately schedulable and thereby maximize completed tasks,
+but it does not explicitly align each node's workload with its multidimensional
+resource capacity.
 
 When integrated with the complementary swarming routing strategy (as in \sysname), 
 each node handles a limited set of functions whose resource profiles complement 
@@ -403,53 +593,40 @@ and task throughput by 40.24\%--110.75\%. These results align with those observe
 in the smaller cluster, demonstrating that \sysname maintains its performance 
 advantage consistently at scale.
 
-{
 \begin{figure}[t]
     \centering
-    \includegraphics[width=0.97\linewidth]{figures/Eval/overhead_placement.pdf}
-    \vspace{-10pt}
-    \caption{The average duration for \sysname to generate a routing plan.}
-    \label{fig:overhead_placement}
+    \includegraphics[width=\columnwidth]{figures/fig_overhead_combined.pdf} \\ [-10pt]
+    \caption{Routing-plan generation and task-scheduling overhead under different
+    cluster sizes and application workloads.}
+    \label{fig:overhead}
     \vspace{-10pt}
 \end{figure}
-}
 
 \parabf{System overhead.}
 We next evaluate the overhead of the \sysname scheduler under varying cluster 
 sizes and user traffic. To do so, we simulate scheduler load for clusters 
-ranging from 64 to 1024 worker nodes. To avoid interference from bursty traffic 
+ranging from 32 to 1024 worker nodes. To avoid interference from bursty traffic 
 patterns, we generate invocations at a steady rate instead of using a real-world 
 trace. The experimental results 
-are presented in Figures~\ref{fig:overhead_placement} and~\ref{fig:overhead_scheduling}. 
+are presented in Figure~\ref{fig:overhead}. 
 
-Figure~\ref{fig:overhead_placement} shows the average duration for \sysname to generate 
+The upper panel of Figure~\ref{fig:overhead} shows the average duration for \sysname to generate 
 cluster-wide request routing plans. It can be observed 
 that the generation duration increases gradually with cluster scale but 
 remains largely unaffected by invocation frequency. This is because \sysname scales 
 the overall load proportionally to the cluster size before computing the routing 
-plan. Even with 1024 worker nodes and an invocation rate of $250 \times 10^3$ 
-requests per minute, the latency stays below 110 ms. This result indicates that 
+plan. Even with 1024 worker nodes and an invocation rate above $260 \times 10^3$ 
+requests per minute, the latency stays below 60 ms. This result indicates that 
 the scheduler can generate routing plans promptly, even in large-scale 
 clusters, demonstrating the practical scalability~of~\sysname.
 
-Figure~\ref{fig:overhead_scheduling} shows the scheduling overhead for individual 
+The lower panel of Figure~\ref{fig:overhead} shows the scheduling overhead for individual 
 tasks under different scenarios. It should be noted that 
 routing plan generation is performed by a separate background process within 
 the scheduler. The main scheduling process only receives the resulting routing 
 plan and assigns tasks accordingly. Therefore, only the scheduling overhead 
 contributes to the additional latency in the end-to-end 
 task execution path. As shown, even under a heavy load of 1024 worker nodes, the 
-extra scheduling delay added by \sysname remains below 10 ms. This overhead is 
+extra scheduling delay added by \sysname remains below 2.5 ms. This overhead is 
 negligible for the vast majority of FaaS scenarios, confirming that the scheduling 
 logic of \sysname is lightweight enough for production-scale~deployment.
-
-{
-\begin{figure}[t]
-    \centering
-    \includegraphics[width=0.97\linewidth]{figures/Eval/overhead_scheduling.pdf}
-    \vspace{-10pt}
-    \caption{The average scheduling overhead of \sysname.}
-    \label{fig:overhead_scheduling}
-    \vspace{-15pt}
-\end{figure}
-}

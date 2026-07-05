@@ -312,7 +312,7 @@ in Algorithm~\ref{alg:placement}.
 \parabf{Low Overhead via Partial Updates.} To keep the scheduling overhead low, 
 the routing algorithm employs an incremental (partial) update mechanism. Rather 
 than recomputing the full routing plan from scratch for every scheduling window, the 
-system periodically (every minute in our implementation) monitors the latest 
+system periodically (every five minutes in our implementation) monitors the latest 
 demand profiles $\langle r_i, \mathbf{V}_i, D_i \rangle$ of all functions. For 
 a function whose aggregate demand $\mathbf{V}_i$ has not increased and demand 
 distribution $D_i$ remains statistically stable, the algorithm preserves its 
@@ -323,7 +323,7 @@ of functions that need to be re-routed in each iteration, which in turn minimize
 instance migration, thereby reducing scheduling churn and preserving warm instance 
 states. Furthermore, to prevent the accumulation of sub-optimality that may arise 
 from multiple incremental updates, the system performs a global re-placement 
-every 30 minutes, which recomputes the assignment for all functions from a clean 
+every 10 minutes, which recomputes the assignment for all functions from a clean 
 state, ensuring long-term placement quality.
 
 \subsection{Monotonic Scale-up Request Scheduling}

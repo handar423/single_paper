@@ -30,6 +30,16 @@ Taken together, the prevailing serverless paradigm relies on modeling each funct
 \parabf{Resource Demand Variation Across Functions.}
 The resource demands of serverless functions are highly heterogeneous. We quantify this heterogeneity by analyzing the execution traces of 162 real-world functions from the open-source Huawei dataset~\cite{huawei_dataset}, calculating the average CPU-to-memory ratio (core/GB) for each. Figure~\ref{fig:cpu_mem_ratio_hist} presents the distribution of these ratios across all functions.\footnote{The statistical results shown are from [Request Table Module, Region 4] part in dataset~\cite{huawei_dataset}. We observed similar distributions across different parts of the dataset.} The distribution is highly dispersed, with ratios ranging from 0.09 to 10.10 and a high CV of 62.43\%, indicating that some functions are extremely compute-intensive while others are predominantly memory-intensive. This substantial variation in intrinsic resource profiles implies that a resource allocation strategy that is unaware of such differences is prone to creating resource fragmentation.
 
+Figure~\ref{fig:ratio_stability_scatter} further examines how CPU and memory usage co-vary within individual functions as request inputs change.\footnote{Benchmark names are abbreviated in the figure for readability; their full identifiers are listed in Table~\ref{tab:setup}.} Each point represents the mean usage for one input, and the line is a per-function linear fit. The distinct slopes across functions reinforce the need to account for function-specific resource profiles, while deviations from the fitted lines capture input-dependent variation within a function.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{figures/fig_ratio_stability_grid.pdf} \\ [-10pt]
+  \caption{CPU and memory usage across request inputs for nine serverless functions. Each line shows a per-function linear fit.}
+  \label{fig:ratio_stability_scatter}
+  \vspace{-12pt}
+\end{figure}
+
 \parabf{Opportunity \#1: Heterogeneity-aware function placement.} The substantial dispersion in CPU-to-memory ratios across functions creates a significant opportunity to enhance cluster-wide resource efficiency through smarter placement. By leveraging the diverse resource profiles identified in our characterization, a scheduler can strategically co-locate functions with complementary demands\textemdash pairing compute-intensive workloads with memory-intensive ones. This complementary packing balances resource consumption along multiple dimensions at the node level, thereby minimizing fragmentation, maximizing aggregate utilization, and significantly increasing the effective capacity of the server fleet.
 
 % 2) 调用级别资源占用
@@ -38,7 +48,7 @@ Resource demand also varies significantly across different requests of the same 
 
 \begin{figure}[t]
   \centering
-  \includegraphics[width=0.95\linewidth]{figures/background/cpu_memory_ratio_histogram.pdf}
+  \includegraphics[width=0.95\linewidth]{figures/background/cpu_memory_ratio_histogram.pdf} \\ [-10pt]
   \caption{Heterogeneous CPU:memory ratios across functions.} 
   \vspace{-10pt}
   \label{fig:cpu_mem_ratio_hist}
@@ -60,7 +70,7 @@ benefits of a warm instance.
 
 \begin{figure}[t]
     \centering
-    \includegraphics[width=0.95\linewidth]{figures/background/cdf_cpu_cv_regions.pdf}
+    \includegraphics[width=0.95\linewidth]{figures/background/cdf_cpu_cv_regions.pdf} \\ [-10pt]
     \caption{Resource demand variations of serverless function.}
     \vspace{-15pt}
 \label{fig:usage_variation}
