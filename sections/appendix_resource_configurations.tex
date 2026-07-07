@@ -6,10 +6,11 @@ in the system experiments. These configurations are conservative empirical
 values selected according to the observed end-to-end runtime behavior of each
 benchmark, including task execution, runtime state, and input/output processing.
 They are applied consistently to COSMOS and all baselines. The allocation ratio
-is the configured CPU-to-memory ratio used to construct CPU allocations from
-the memory-demand distributions in the evaluation.
+is the configured CPU-to-memory ratio used to derive CPU allocations from the
+evaluated memory-demand distributions.
 
-\begin{table}[t]
+\providecommand{\resourceconfigtablebegin}{\begin{table}[t]}
+\resourceconfigtablebegin
     \caption{Resource configurations used in the system experiments.}
     \label{tab:supp-resource-config}
     \centering

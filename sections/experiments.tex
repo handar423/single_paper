@@ -34,6 +34,23 @@ the contribution of each design component, and scalability.
     \end{tabular}
 \end{table}
 
+\begin{figure*}[t]
+    \centering
+    \includegraphics[width=0.68\linewidth]{figures/fig_main_legend.pdf}\\[-15pt]
+    \subfloat[]{\includegraphics[width=0.32\linewidth]{figures/fig_main_cpu.pdf}%
+    \label{fig:main_cpu}}
+    \hfil
+    \subfloat[]{\includegraphics[width=0.32\linewidth]{figures/fig_main_mem.pdf}%
+    \label{fig:main_mem}}
+    \hfil
+    \subfloat[]{\includegraphics[width=0.32\linewidth]{figures/fig_main_throughput.pdf}%
+    \label{fig:main_throughput}}
+    \caption{Main-experiment comparison across offered loads: (a) CPU utilization,
+    (b) memory utilization, and (c) task throughput. All panels share the legend.}
+    \label{fig:main_resources}
+    \vspace{-10pt}
+\end{figure*}
+
 \vspace{-5pt}
 \subsection{Evaluation Setup}
 \vspace{-5pt}
@@ -44,9 +61,8 @@ We use the ten SeBS benchmarks characterized in
 \S\ref{sec:background:demand-analysis}. Table~\ref{tab:setup} summarizes their
 workload categories and execution times, while
 Figure~\ref{fig:ratio_stability_scatter} characterizes their measured task-level
-resource consumption. Appendix~\ref{app:resource-configurations}, also provided
-as a standalone online supplement, reports the resource configurations used in
-our system experiments. These configurations are
+resource consumption. The online supplement reports the resource configurations
+used in our system experiments. These configurations are
 conservative empirical values selected according to the observed end-to-end
 runtime behavior of each benchmark and are applied consistently to all systems.
 
@@ -68,8 +84,7 @@ significantly deviate from normality ($p>0.05$). We therefore randomly select te
 functions, fit Gaussian distributions to their memory usage, and adjust each
 benchmark's inputs and parameters to reproduce the sampled variance. Because the
 dataset primarily records memory demand, we scale CPU proportionally using each
-benchmark's resource-allocation ratio
-(Appendix~\ref{app:resource-configurations}).
+benchmark's resource-allocation ratio reported in the online supplement.
 
 \parabf{Cluster configuration.} Experiments are conducted on CloudLab~\cite{cloudlab} 
 using a cluster of nine c6620 instances (56 cores total, 2$\times$ Intel Xeon 
@@ -80,8 +95,8 @@ a subset of its total resources. Unless otherwise specified, the available resou
 proportions across nodes are sampled from a normal distribution with a standard 
 deviation~of~0.85.
 
-\parabf{Baselines.} We evaluate \sysname against three state-of-the-art resource
-management approaches for serverless platforms, which optimize cluster efficiency
+\parabf{Baselines.} We evaluate \sysname against three state-of-the-art  serverless resource
+management approaches, which optimize cluster efficiency
 from complementary perspectives:
 \begin{itemize}
     \item \textbf{Palette}~\cite{abdi2023palette}: Each benchmark is assigned a
@@ -93,14 +108,14 @@ from complementary perspectives:
     to each kept-alive instance and evicts low-priority instances first under
     resource pressure.
 
-    \item \textbf{Golgi}~\cite{soccGolgi}: Golgi monitors overcommitment effectiveness
+    \item \textbf{Golgi}~\cite{soccGolgi}: Golgi monitors instance performance
     using low-level runtime metrics and employs Mondrian Forest models to
     route requests between overcommitted and non-overcommitted instances. Since
-    \sysname does not support Golgi's intra-instance concurrency control, we
+    \sysname does not support intra-instance task concurrency, we
     evaluate two implementations: \textbf{Golgi}, which approximates concurrency
-    control by adjusting instance resource allocations, and \textbf{Golgi-NoCC},
+    control in Golgi by adjusting instance resource allocations, and \textbf{Golgi-NoCC},
     which omits this mechanism. The original Golgi study reports that disabling
-    concurrency control changes its performance by at most 14\%~\cite{soccGolgi},
+    concurrency control changes performance by at most 14\%~\cite{soccGolgi},
     suggesting that performance detection and Mondrian Forest-based routing
     account for most of its system advantages.
 \end{itemize}
@@ -122,29 +137,15 @@ of initial cold starts.
 \subsection{Benefits of \sysname}
 \label{sec:experiments_comparsion}
 
-\begin{figure*}[t]
-    \centering
-    \includegraphics[width=0.68\linewidth]{figures/fig_main_legend.pdf}\\[-10pt]
-    \subfloat[]{\includegraphics[width=0.32\linewidth]{figures/fig_main_cpu.pdf}%
-    \label{fig:main_cpu}}
-    \hfil
-    \subfloat[]{\includegraphics[width=0.32\linewidth]{figures/fig_main_mem.pdf}%
-    \label{fig:main_mem}}
-    \hfil
-    \subfloat[]{\includegraphics[width=0.32\linewidth]{figures/fig_main_throughput.pdf}%
-    \label{fig:main_throughput}}
-    \caption{Main-experiment comparison across offered loads: (a) CPU utilization,
-    (b) memory utilization, and (c) task throughput. All panels share the legend.}
-    \label{fig:main_resources}
-\end{figure*}
-
 \begin{figure}[t]
     \centering
-    \includegraphics[width=\columnwidth]{figures/fig_main_latency.pdf}\\[-10pt]
+    \includegraphics[width=0.9\columnwidth]{figures/fig_main_latency.pdf}\\[-10pt]
     \caption{99th-percentile tail latency across offered loads.} 
     \label{fig:main_latency}
+    \vspace{-10pt}
 \end{figure}
 
+\looseness=-1
 Figures~\ref{fig:main_resources} and~\ref{fig:main_latency}
 compare \sysname with the baselines across offered loads from 5\% to 200\% of
 cluster capacity. Unless otherwise stated, all reported differences are relative
@@ -166,11 +167,11 @@ by 28.34\%--46.91\%, memory utilization by
 \sysname reduces the 99th-percentile latency by 8.19\%--28.94\%, showing that
 its throughput gains do not compromise tail latency.
 
-These gains stem from two complementary mechanisms. Complementary swarming limits
-the functions served by each node to improve instance reuse, while matching their
-resource profiles to node capacity to reduce fragmentation. Monotonic scale-up
-further reduces over-provisioning and cold starts, enabling \sysname to sustain
-higher utilization and throughput as load increases.
+These gains stem from two complementary mechanisms. Complementary swarming narrows
+each node's function set to improve reuse while matching resource profiles to
+node capacity to reduce fragmentation. Monotonic scale-up further reduces
+over-provisioning and cold starts, sustaining higher utilization and throughput
+as load rises.
 
 \subsection{Performance Analysis}
 \label{sec:experiments_analysis}
@@ -186,14 +187,14 @@ Figure~\ref{fig:eval_detail} breaks down the average CPU and memory capacity of
 
 \begin{figure}[t]
     \centering
-    \includegraphics[width=0.82\linewidth]{figures/fig_resource_breakdown_legend.pdf}\\[-5pt]
-    \subfloat[]{\includegraphics[width=\linewidth]{figures/fig_resource_breakdown_cpu.pdf}%
-    \label{fig:eval_detail_cpu}} \\[-10pt]
-    \hfil
-    \subfloat[]{\includegraphics[width=\linewidth]{figures/fig_resource_breakdown_mem.pdf}%
+    \includegraphics[width=0.75\linewidth]{figures/fig_resource_breakdown_legend.pdf}\\[-13pt]
+    \subfloat[]{\includegraphics[width=0.48\linewidth]{figures/fig_resource_breakdown_cpu.pdf}%
+    \label{fig:eval_detail_cpu}}
+    \hfill
+    \subfloat[]{\includegraphics[width=0.48\linewidth]{figures/fig_resource_breakdown_mem.pdf}%
     \label{fig:eval_detail_memory}}
     \caption{Resource usage breakdown of \sysname and the baselines under the
-    default configuration at 100\% offered load: (a) CPU and (b) memory.}
+    default configuration at 100\% offered load. (a) CPU. (b) memory.}
     \vspace{-10pt}
 \label{fig:eval_detail}
 \end{figure}
@@ -238,10 +239,10 @@ facilitating container reuse and in-place scaling.
 
 \looseness=-1
 \parabf{Bursty workloads handling.} Figure~\ref{fig:temporal_coldstart_latency}
-shows the minute-level cold-start rate and 99th tail latency after excluding the first five minutes of system warm-up. We use 45\% offered load because the baselines already exhibit
+shows the minute-level cold-start rate and 99th tail latency after excluding the first five minutes of system warm-up. We use 45\% offered load results here because the baselines already exhibit
 substantial request backlogs at 100\% load.
 
-At approximately minute 26-28, the invocation rate of \textbf{graph-pagerank} rises
+At minute 26-28, the invocation rate of \textbf{graph-pagerank} rises
 by about $5\times$. This burst is particularly challenging because
 \textbf{graph-pagerank} is among the most resource-demanding benchmarks. 
 As shown in the figure, the burst
@@ -257,21 +258,23 @@ Together, these properties limit both the cluster-wide impact of a burst and its
 performance interference with other functions. The baselines lack this isolation,
 allowing burst-induced contention and request backlogs to affect more servers
 and prolong latency recovery. For sustained workload changes, \sysname revises
-the cluster load partition at the next routing-plan update, continuously
-realigning resource allocation with workload demand.
+the cluster load partition at the next routing-plan update to realign resources
+with demand.
 
 \begin{figure}[t]
     \centering
-    \includegraphics[width=\columnwidth]{figures/fig_swap_analysis.pdf} \\ [-10pt]
+    \includegraphics[width=0.9\columnwidth]{figures/fig_swap_analysis.pdf} \\ [-10pt]
     \caption{Per-function demand relocation between consecutive
-    \sysname routing plans for Figure~\ref{fig:temporal_coldstart_latency}.}
+    \sysname routing plans for Figure~\ref{fig:temporal_coldstart_latency}.
+    The legend identifies the five functions with the largest average relocated
+    shares.}
     \label{fig:swap_analysis}
     \vspace{-10pt}
 \end{figure}
 
 \begin{table}[t]
     \centering
-    \caption{Average pod eviction rate among COSMOS and baselines for Figure~\ref{fig:temporal_coldstart_latency}.}
+    \caption{Pod eviction rate among COSMOS and baselines for Figure~\ref{fig:temporal_coldstart_latency}.}
     \label{tab:avg_eviction_rate}
     \footnotesize
     \setlength{\tabcolsep}{2.5pt}
@@ -288,7 +291,7 @@ realigning resource allocation with workload demand.
 
 \parabf{Impact of routing-plan updates.} Figure~\ref{fig:swap_analysis} and
 Table~\ref{tab:avg_eviction_rate} further examine the routing-plan updates in the
-experiment shown in Figure~\ref{fig:temporal_coldstart_latency}. The figure
+experiment of Figure~\ref{fig:temporal_coldstart_latency}. The figure
 decomposes the net per-function demand relocation between six pairs of
 consecutive routing plans, while the table reports the observed runtime pod
 eviction rates. This plan-level metric captures the aggregate effect of
@@ -296,8 +299,7 @@ beneficial swaps on function-load placement, rather than counting internal swap
 operations, which are never deployed individually. The odd-numbered updates relocate
 only 40.4\%--51.8\% of total demand,
 substantially less than the 72.0\%--76.9\% relocated by the even-numbered updates,
-because \sysname uses local updates whenever the existing partition can be
-adjusted without full re-optimization.
+demonstrating the effect of partial~updates.
 
 The overall relocated share remains relatively high because \sysname deliberately
 adopts an aggressive reallocation policy: upon detecting an increase in a
@@ -313,7 +315,7 @@ tail-latency spikes outside the burst window. Moreover, \sysname incurs fewer
 cold starts than the baselines, and its pod-eviction rate is 1.433 events/min,
 60.6\% lower than the best baseline in Table~\ref{tab:avg_eviction_rate}. These
 results show that routing-plan relocation does not increase observable instance
-churn under the evaluated configuration.
+churn.
 
 \begin{figure}[t]
     \centering
@@ -358,7 +360,7 @@ instance churn.
 
 \begin{figure*}[t]
     \centering
-    \includegraphics[width=0.94\linewidth]{figures/fig_robustness_legend.pdf}\\[-10pt]
+    \includegraphics[width=0.94\linewidth]{figures/fig_robustness_legend.pdf}\\[-15pt]
     \subfloat[]{\includegraphics[width=0.32\linewidth]{figures/fig_robustness_cpu.pdf}%
     \label{fig:robustness_cpu}}
     \hfil
@@ -392,23 +394,6 @@ Nevertheless, all prediction-error variants retain a
 clear and consistent advantage over the baselines, indicating that \sysname's
 overall performance gains are robust to imperfect demand estimates.
 
-
-\subsection{Generality}
-\label{sec:experiments_generality}
-
-We evaluate \sysname across node-capacity distributions, function-set sizes,
-and function-popularity distributions. Table~\ref{tab:generality-summary}
-first reports the default configuration from the main experiment and then
-summarizes three generality dimensions at 100\% offered load. Each entry gives
-the best baseline and \sysname absolute values, followed by \sysname's relative
-gain. \sysname improves both CPU utilization and throughput in all settings.
-Its advantage grows with function diversity because
-complementary swarming has more opportunities to improve locality and resource
-matching, whereas highly skewed popularity increases reuse opportunities even
-for the baselines and therefore reduces the optimization headroom. Appendix~
-\ref{app:generality} provides the complete load-sweep figures, scenario
-definitions, and detailed analysis.
-
 \begin{table}[t]
     \caption{Performance at 100\% offered load. Each entry reports best
     baseline/COSMOS, with COSMOS's relative gain in parentheses.}
@@ -439,6 +424,22 @@ definitions, and detailed analysis.
     \end{tabular}
     }
 \end{table}
+
+\subsection{Generality}
+\label{sec:experiments_generality}
+
+We evaluate \sysname across node-capacity distributions, function-set sizes,
+and function-popularity distributions. Table~\ref{tab:generality-summary}
+first reports the default configuration from the main experiment and then
+summarizes three generality dimensions at 100\% offered load. Each entry gives
+the best baseline and \sysname absolute values, followed by \sysname's relative
+gain. \sysname improves both CPU utilization and throughput in all settings.
+Its advantage grows with function diversity because
+complementary swarming has more opportunities to improve locality and resource
+matching, whereas highly skewed popularity increases reuse opportunities even
+for the baselines and therefore reduces the optimization headroom. The online
+supplement provides the complete load-sweep figures, scenario definitions, and
+detailed analysis.
 
 {
 \begin{figure}[t]
@@ -484,8 +485,8 @@ Scheduling* exhibits a different trade-off. Its CPU and memory utilization are 2
 Finally, we evaluate the scalability of \sysname. In a 16-worker CloudLab
 experiment, \sysname improves CPU utilization, memory utilization, and task
 throughput over the best-performing baseline by 35.78\%, 39.40\%, and 67.43\%,
-respectively, at 100\% load; Appendix~\ref{app:large-cluster} reports the complete
-results. We then evaluate scheduler overhead on simulated clusters of up to
+respectively, at 100\% load; the online supplement reports the complete results.
+We then evaluate scheduler overhead on simulated clusters of up to
 1024 workers.
 
 \begin{figure}[t]

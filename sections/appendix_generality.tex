@@ -3,14 +3,16 @@
 
 We evaluate generality along three deployment dimensions: cluster resource
 distribution, function-set size, and function-popularity distribution. We report
-CPU utilization and task throughput as representative metrics. All improvements
-at 100\% offered load are relative to the best-performing baseline for the
-corresponding metric. Because Golgi and Golgi-NoCC exhibit only minor differences,
-we report only Golgi in these experiments.
+CPU utilization and task throughput as representative metrics of resource
+efficiency and system performance, respectively. Unless otherwise stated,
+improvements at 100\% offered load are relative to the best-performing baseline
+for each metric. Because Golgi and Golgi-NoCC exhibit only minor performance
+differences, we report only Golgi in these experiments.
 
 \begin{figure}[t]
     \centering
-    \includegraphics[width=0.86\linewidth]{figures/fig_gen_resource_dist_legend.pdf}\\[-10pt]
+    \providecommand{\generalitylegendbreak}{\\[-10pt]}
+    \includegraphics[width=0.86\linewidth]{figures/fig_gen_resource_dist_legend.pdf}\generalitylegendbreak
     \subfloat[]{\includegraphics[width=0.552\linewidth]{figures/fig_gen_simple_compact.pdf}%
         \label{fig:gen_simple}}
     \hspace{-0.02\linewidth}
@@ -24,16 +26,20 @@ we report only Golgi in these experiments.
 \end{figure}
 
 \textbf{Resource distributions.}
-Figure~\ref{fig:gen_resource_dist} compares uniform and Zipf-distributed resource
-availability. The uniform setting exposes 75\% of each server's capacity, whereas
-the Zipf setting uses eight resource tiers with $\alpha=0.8$. At 100\% load,
-COSMOS improves CPU utilization by 37.63\% and 43.04\%, and throughput by 87.30\%
-and 90.10\%, under the uniform and Zipf settings, respectively. Its advantage
-therefore persists under both balanced and highly heterogeneous availability.
+Figures~\ref{fig:gen_simple} and~\ref{fig:gen_zipf} compare performance under
+uniform and Zipf-distributed resource availability. The uniform setting exposes
+75\% of each server's capacity, whereas the Zipf setting uses eight resource
+tiers with $\alpha=0.8$. Across both settings, COSMOS follows the same overall
+trend as in the main experiment: its advantage becomes pronounced as load
+approaches capacity and persists under overload. At 100\% load, COSMOS improves
+CPU utilization by 37.63\% and 43.04\%, and throughput by 87.30\% and 90.10\%,
+under the uniform and Zipf settings, respectively. This consistency shows that
+complementary swarming remains effective when resource availability is either
+balanced or highly heterogeneous.
 
 \begin{figure}[t]
     \centering
-    \includegraphics[width=0.86\linewidth]{figures/fig_gen_funcnum_legend.pdf}\\[-10pt]
+    \includegraphics[width=0.86\linewidth]{figures/fig_gen_funcnum_legend.pdf}\generalitylegendbreak
     \subfloat[]{\includegraphics[width=0.552\linewidth]{figures/fig_gen_func5_compact.pdf}%
         \label{fig:gen_func5}}
     \hspace{-0.02\linewidth}
@@ -44,22 +50,36 @@ therefore persists under both balanced and highly heterogeneous availability.
     shows CPU utilization (top) and task throughput (bottom): (a) five and
     (b) twenty functions.}
     \label{fig:gen_funcnum}
+    \vspace{-10pt}
 \end{figure}
 
 \textbf{Number of functions.}
-We compare the default ten-function workload with two additional settings. The
-five-function setting uses video-processing, graph-pagerank, image-recognition,
-dna-visualisation, and thumbnailer, doubling each invocation rate to preserve
-aggregate load. The twenty-function setting adds a logically distinct replica
-of each original function and halves every per-function invocation rate. At
-100\% load, COSMOS improves CPU utilization by 19.15\% and 42.73\%, and throughput
-by 70.44\% and 94.97\%, with five and twenty functions, respectively. Greater
-function diversity provides more opportunity to improve locality and complementary
-resource matching.
+Beyond the default ten-function setting, we evaluate two additional function-set
+sizes:
+
+\begin{itemize}
+    \item \textbf{Five functions}: video-processing, graph-pagerank,
+    image-recognition, dna-visualisation, and thumbnailer. We double each
+    function's invocation rate to maintain a comparable aggregate load.
+
+    \item \textbf{Twenty functions}: the original ten functions plus one replica
+    of each. A replica has the same code, resource profile, and runtime as its
+    original but is treated as a distinct function, preventing instance reuse
+    between the pair. We halve each function's invocation rate to preserve the
+    aggregate user traffic.
+\end{itemize}
+
+Figures~\ref{fig:gen_func5} and~\ref{fig:gen_func20} show that COSMOS's advantage
+grows with workload diversity. At 100\% load, COSMOS improves CPU utilization by
+19.15\% and 42.73\%, and throughput by 70.44\% and 94.97\%, with five and twenty
+functions, respectively. With fewer functions, each node already serves a
+relatively small function set, leaving less room to improve locality. As the
+function set grows, complementary swarming more effectively limits the distinct
+functions handled by each node and increases instance reuse.
 
 \begin{figure}[t]
     \centering
-    \includegraphics[width=0.86\linewidth]{figures/fig_gen_workload_legend.pdf}\\[-10pt]
+    \includegraphics[width=0.86\linewidth]{figures/fig_gen_workload_legend.pdf}\generalitylegendbreak
     \subfloat[]{\includegraphics[width=0.552\linewidth]{figures/fig_gen_workload_default_compact.pdf}%
         \label{fig:gen_workload_default}}
     \hspace{-0.02\linewidth}
@@ -73,38 +93,50 @@ resource matching.
 \end{figure}
 
 \textbf{Workload distributions.}
-We compare the default workload with an 80/20 popularity skew while preserving
-the aggregate invocation rate. In the skewed setting, thumbnailer and
-video-processing collectively account for 80\% of invocations. At 100\% load,
-COSMOS improves CPU utilization by 37.34\% and throughput by 99.56\% under the
-default workload; under the 80/20 workload, the gains are 18.31\% and 18.00\%.
-Concentration on two functions naturally improves reuse for all systems and
-reduces COSMOS's optimization headroom, but COSMOS retains an advantage.
+Finally, we compare the default workload with an 80/20 popularity skew while
+preserving the aggregate invocation rate. In the skewed setting, thumbnailer and
+video-processing collectively account for 80\% of invocations.
+Figures~\ref{fig:gen_workload_default} and~\ref{fig:gen_skewed} show that COSMOS
+consistently outperforms the baselines, although its margin is smaller under the
+skewed workload. At 100\% load, COSMOS improves CPU utilization by 37.34\% and
+throughput by 99.56\% under the default workload; under the 80/20 workload, the
+corresponding gains are 18.31\% and 18.00\%. Concentrating most requests on two
+functions naturally increases their reuse opportunities even for the baselines,
+reducing the optimization headroom for complementary swarming. Nevertheless,
+COSMOS retains an advantage under highly skewed function popularity.
 
-\subsection{Larger-scale Cluster Experiment}
+\section{Larger-scale Cluster Experiment}
 \label{app:large-cluster}
 
-We further evaluate COSMOS on a 16-worker CloudLab cluster. We proportionally
-scale the invocation frequency with the cluster size while keeping the other
-experimental conditions unchanged. Figure~\ref{fig:eval_big} compares COSMOS
-with the baselines across offered loads. At 100\% load, COSMOS improves CPU
+We further evaluate COSMOS on a 16-worker CloudLab cluster, twice the default
+cluster size. We proportionally scale the invocation frequency while keeping
+all other experimental conditions unchanged. Figure~\ref{fig:eval_big} compares
+COSMOS with the baselines across offered loads. As in the eight-worker cluster,
+COSMOS's advantage becomes more pronounced as the offered load approaches
+cluster capacity and remains under overload. At 100\% load, COSMOS improves CPU
 utilization, memory utilization, and task throughput over the best-performing
-baseline by 35.78\%, 39.40\%, and 67.43\%, respectively. These results are
-consistent with those from the default eight-worker cluster.
+baseline by 35.78\%, 39.40\%, and 67.43\%, respectively. The consistent trend
+shows that COSMOS retains its performance advantage as the cluster scales from
+eight to sixteen workers.
 
-\begin{figure*}[t]
+\providecommand{\largeclusterfigurebegin}{\begin{figure*}[t]}
+\providecommand{\largeclusterfigureend}{\end{figure*}}
+\providecommand{\largeclusterlegendwidth}{0.58\linewidth}
+\providecommand{\largeclusterplotwidth}{0.32\linewidth}
+\providecommand{\largeclusterlegendbreak}{\\[-10pt]}
+\providecommand{\largeclusterseparator}{\hfil}
+\largeclusterfigurebegin
     \centering
-    \includegraphics[width=0.58\linewidth]{figures/fig_large_legend.pdf}\\[-10pt]
-    \subfloat[]{\includegraphics[width=0.32\linewidth]{figures/fig_large_cpu.pdf}
+    \subfloat[]{\includegraphics[width=\largeclusterplotwidth]{figures/fig_large_cpu.pdf}
     \label{fig:eval_big_cpu}}
-    \hfil
-    \subfloat[]{\includegraphics[width=0.32\linewidth]{figures/fig_large_mem.pdf}
+    \largeclusterseparator
+    \subfloat[]{\includegraphics[width=\largeclusterplotwidth]{figures/fig_large_mem.pdf}
     \label{fig:eval_big_memory}}
-    \hfil
-    \subfloat[]{\includegraphics[width=0.32\linewidth]{figures/fig_large_throughput.pdf}
+    \largeclusterseparator
+    \subfloat[]{\includegraphics[width=\largeclusterplotwidth]{figures/fig_large_throughput.pdf}
     \label{fig:eval_big_throughput}}
     \caption{Performance comparison across offered loads in the 16-worker cluster:
     (a) CPU utilization, (b) memory utilization, and (c) task throughput. All
     panels share the legend.}
     \label{fig:eval_big}
-\end{figure*}
+\largeclusterfigureend

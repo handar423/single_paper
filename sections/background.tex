@@ -28,7 +28,7 @@ Taken together, the prevailing serverless paradigm relies on modeling each funct
 
 % 1) 函数级别需求分布
 \parabf{Resource Demand Variation Across Functions.}
-The resource demands of serverless functions are highly heterogeneous. We quantify this heterogeneity by analyzing the execution traces of 162 real-world functions from the open-source Huawei dataset~\cite{huawei_dataset}, calculating the average CPU-to-memory ratio (core/GB) for each. Figure~\ref{fig:cpu_mem_ratio_hist} presents the distribution of these ratios across all functions.\footnote{The statistical results shown are from [Request Table Module, Region 4] part in dataset~\cite{huawei_dataset}. We observed similar distributions across different parts of the dataset.} The distribution is highly dispersed, with ratios ranging from 0.09 to 10.10 and a high CV of 62.43\%, indicating that some functions are extremely compute-intensive while others are predominantly memory-intensive. This substantial variation in intrinsic resource profiles implies that a resource allocation strategy that is unaware of such differences is prone to creating resource fragmentation.
+The resource demands of serverless functions are highly heterogeneous. We quantify this heterogeneity by analyzing the execution traces of 162 real-world functions from the open-source Huawei dataset~\cite{huawei_dataset}, calculating the average CPU-to-memory ratio (core/GB) for each. Figure~\ref{fig:cpu_mem_ratio_hist} presents the distribution of these ratios across all functions.\footnote{Statistics shown are from [Request Table Module, Region 4] part in dataset~\cite{huawei_dataset}. We observed similar distributions across other parts of the dataset.} The distribution is highly dispersed, with ratios ranging from 0.09 to 10.10 and a high CV of 62.43\%, indicating that some functions are extremely compute-intensive while others are predominantly memory-intensive. This substantial variation in intrinsic resource profiles implies that a resource allocation strategy that is unaware of such differences is prone to creating resource fragmentation.
 
 Figure~\ref{fig:ratio_stability_scatter} further examines how CPU and memory
 usage co-vary as request inputs change. We randomly select ten functions from
@@ -51,8 +51,8 @@ and memory-intensive behavior. This property follows naturally from the
 fine-grained, single-purpose design of serverless functions: each invocation
 performs a well-defined task, while complex applications are commonly decomposed
 into multiple such functions. The remaining two benchmarks, video-processing
-and uploader, exhibit a streaming pattern in which peak memory remains nearly
-constant while CPU consumption grows with the processed input.
+and uploader, exhibit a streaming pattern: peak memory remains nearly constant
+while CPU consumption grows with input size.
 
 \begin{figure}[t]
   \centering

@@ -2,13 +2,39 @@
 \usepackage{booktabs}
 \usepackage{makecell}
 \usepackage{graphicx}
+\usepackage{float}
+\usepackage{stfloats}
 \usepackage[caption=false,font=normalsize,labelfont=sf,textfont=sf]{subfig}
+\usepackage{hyperref}
+\hypersetup{
+    colorlinks = true,
+    urlcolor   = black,
+    linkcolor  = blue,
+    citecolor  = blue
+}
+
+% Supplement-only float choices. The shared appendix sources retain their
+% original defaults when included by paper.tex.
+\newcommand{\resourceconfigtablebegin}{\begin{table}[H]}
+\newcommand{\largeclusterfigurebegin}{\begin{figure}[!t]}
+\newcommand{\largeclusterfigureend}{\end{figure}}
+\newcommand{\largeclusterlegendwidth}{0.92\linewidth}
+\newcommand{\largeclusterplotwidth}{0.82\linewidth}
+\newcommand{\largeclusterlegendbreak}{\\[2pt]}
+\newcommand{\largeclusterseparator}{\\[0pt]}
+\newcommand{\generalitylegendbreak}{\\[-2pt]}
 
 \begin{document}
 
-\title{Online Supplement to ``COSMOS: Taming Heterogeneous Resource Demands in Serverless Functions with Complementary Swarming and Monotonic Scale-up''}
-\author{}
-\maketitle
+\twocolumn[
+\begin{center}
+    {\LARGE Online Supplement to\par}
+    \vspace{4pt}
+    {\Large ``COSMOS: Taming Heterogeneous Resource Demands in Serverless
+    Functions with Complementary Swarming and Monotonic Scale-up''\par}
+    \vspace{12pt}
+\end{center}
+]
 
 \appendices
 \input{sections/appendix_resource_configurations}

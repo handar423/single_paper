@@ -51,8 +51,8 @@ more nuanced. We characterize it along three orthogonal dimensions:
     memory-intensive behavior, whereas a relatively large $r_i$ corresponds to 
     compute-intensive behavior. To reduce problem complexity, we assume this 
     ratio remains invariant across requests of the same function. This assumption
-    is consistent with the stable CPU-to-memory profiles observed for most of our
-    evaluated benchmarks (Figure~\ref{fig:ratio_stability_scatter}). We discuss
+    is consistent with the stable CPU-to-memory profiles observed in Figure~\ref{fig:ratio_stability_scatter}. 
+    We discuss
     the single-resource-dominant exceptions and the scope of this model in
     \S\ref{sec:discussion}.
 
@@ -286,14 +286,14 @@ $\mathcal{S}$.
 
 The subroutine proceeds in four logical steps. First, it identifies the dominant
 idle resource\textemdash CPU or memory\textemdash because only one resource dimension may
-remain idle after using the node's free capacity (line~11 of
-Algorithm~\ref{alg:placement}; lines~2--7 of Algorithm~\ref{alg:swap-capacity}).
+remain idle after using the node's free capacity in
+Algorithm~\ref{alg:placement} (lines~2--7).
 Accordingly, SwapCapacity sorts assigned functions by resource-demand ratio
 $r_k$: ascending when CPU is idle and descending when memory is idle, allowing
 the algorithm to swap the most complementary candidates first.
 
-Second, for each candidate function $F_k$ in this sorted list, the algorithm 
-performs a benefit test (line~9). The condition $\operatorname{sign}\cdot(r_a-r_k) > 0$ 
+\looseness=-1
+Second, the algorithm performs a benefit test for each candidate function $F_k$ in the sorted list (line~9). The condition $\operatorname{sign}\cdot(r_a-r_k) > 0$ 
 guarantees that swapping a fraction of $F_k$ for $F_a$ will actually increase 
 $U(N_j)$. For example, if CPU is idle ($\operatorname{sign}=+1$), we must have
 $r_a > r_k$, meaning $F_a$ is more compute-intensive than $F_k$ and will better 
@@ -322,10 +322,10 @@ $\mathbf{V}_i$ or altered $D_i$) are fed into the complementary swarming algorit
 to update their assignments. This partial update drastically reduces the number 
 of functions that need to be re-routed in each iteration, thereby reducing
 plan-level demand relocation and the resulting instance churn while preserving
-warm states. Furthermore, to prevent the accumulation of sub-optimality that may arise 
-from multiple incremental updates, the system performs a global routing-plan recomputation 
-every 10 minutes, which recomputes the assignment for all functions from a clean 
-state, ensuring long-term placement quality.
+warm states. Furthermore, to prevent sub-optimality from multiple incremental
+updates, the system performs a global routing-plan recomputation every 10 minutes,
+recomputing all function assignments from a clean state to ensure long-term
+placement quality.
 
 \subsection{Monotonic Scale-up Request Scheduling}
 \label{sec:design:scheduling}
@@ -366,8 +366,8 @@ queue, encounters a resource demand sequence that is monotonically non-decreasin
 This property is essential: if an instance were forced to run a larger request before 
 a smaller one, it would either have to start at the higher capacity (wasting 
 resources) or be restarted after a down-scale (incurring cold-start overhead). 
-The backup queue temporarily holds smaller requests until the current queue is 
-fully processed, after which the two queues swap roles.
+The backup queue holds smaller requests until the current queue is processed,
+after which the queues swap roles.
 
 \parabf{Instance execution and priority-based selection.} A function may have from 
 zero to multiple concurrent warm instances, each dedicated to fetching requests only 
@@ -395,7 +395,7 @@ tries the following options in order, aiming to minimize overhead:
 
 If the node lacks sufficient idle resources for options ii) or iii), the scheduler 
 evaluates pod eviction. It selects candidate instances according to a per-sandbox 
-eviction priority computed~as:
+eviction priority:
 \[
 \text{Prio}_{\text{instance}} = \frac{\text{Prio}_{\text{function}}}{N_{\text{instances}}},
 \]
@@ -413,7 +413,7 @@ for the next scheduling event.
 The scheduler assigns a dynamic priority to each function $F_i$ to balance three 
 objectives: minimizing cold-start overhead, preventing request starvation, and 
 maximizing the utility of in-place scaling. The priority is computed as a 
-weighted sum of three factors derived from the state of $F_i$'s~queues:
+weighted sum of three factors:
 \[
 \text{Priority}(F_i) = \omega_1 \cdot \text{factor}_1 \;+\; \omega_2 \cdot \text{factor}_2 \;+\; \omega_3 \cdot \text{factor}_3,
 \]
