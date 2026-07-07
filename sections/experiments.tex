@@ -240,7 +240,7 @@ facilitating container reuse and in-place scaling.
     \includegraphics[width=\columnwidth]{figures/fig_temporal_coldstart_latency.pdf} \\ [-10pt]
     \caption{Minute-level cold-start rate and 99th tail latency under bursty load
     at 45\% offered load.
-    Dashed vertical lines mark \sysname routing strategy updates, and shaded regions
+    Dashed vertical lines mark \sysname routing-plan updates, and shaded regions
     indicate detected burst windows.}
     \label{fig:temporal_coldstart_latency}
     \vspace{-10pt}
@@ -273,8 +273,8 @@ realigning resource allocation with workload demand.
 \begin{figure}[t]
     \centering
     \includegraphics[width=\columnwidth]{figures/fig_swap_analysis.pdf} \\ [-10pt]
-    \caption{Per-function share of demand relocated by consecutive \sysname
-    routing strategy updates for Figure~\ref{fig:temporal_coldstart_latency}.}
+    \caption{Per-function demand relocation between consecutive
+    \sysname routing plans for Figure~\ref{fig:temporal_coldstart_latency}.}
     \label{fig:swap_analysis}
     \vspace{-10pt}
 \end{figure}
@@ -296,12 +296,15 @@ realigning resource allocation with workload demand.
     \vspace{-8pt}
 \end{table}
 
-\parabf{Impact of routing updates.} Figure~\ref{fig:swap_analysis} and
-Table~\ref{tab:avg_eviction_rate} further examine the routing updates in the
+\parabf{Impact of routing-plan updates.} Figure~\ref{fig:swap_analysis} and
+Table~\ref{tab:avg_eviction_rate} further examine the routing-plan updates in the
 experiment shown in Figure~\ref{fig:temporal_coldstart_latency}. The figure
-decomposes, by function, the fraction of demand relocated at six consecutive
-routing updates, while the table compares the resulting average pod eviction
-rates. The odd-numbered updates relocate only 40.4\%--51.8\% of total demand,
+decomposes the net per-function demand relocation between six pairs of
+consecutive routing plans, while the table reports the observed runtime pod
+eviction rates. This plan-level metric captures the aggregate effect of
+beneficial swaps on function-load placement, rather than counting internal swap
+operations, which are never deployed individually. The odd-numbered updates relocate
+only 40.4\%--51.8\% of total demand,
 substantially less than the 72.0\%--76.9\% relocated by the even-numbered updates,
 because \sysname uses local updates whenever the existing partition can be
 adjusted without full re-optimization.
@@ -311,14 +314,16 @@ adopts an aggressive reallocation policy: upon detecting an increase in a
 function's load, it reallocates that function's full demand rather than only the
 increment. This design prioritizes concentrating each function on fewer servers,
 as function concentration has a greater performance impact than minimizing the
-magnitude of each load adjustment. Despite this aggressiveness,
-Figure~\ref{fig:temporal_coldstart_latency} shows that \sysname still incurs fewer
-cold starts than the baselines and, outside the burst window, exhibits no
-tail-latency spikes at routing-update times. Moreover, its eviction rate is
-1.433 events/min, 60.6\% lower than the
-best baseline in Table~\ref{tab:avg_eviction_rate}. Together, these results indicate
-that neither load partitioning nor demand relocation introduces observable
-performance instability.
+magnitude of each load adjustment. Routing-plan changes are applied lazily as
+subsequent requests arrive rather than by eagerly migrating all affected
+instances, so the plan-level relocation overstates the workload immediately
+affected at runtime. Under this trace and update configuration,
+Figure~\ref{fig:temporal_coldstart_latency} shows no routing-update-aligned
+tail-latency spikes outside the burst window. Moreover, \sysname incurs fewer
+cold starts than the baselines, and its pod-eviction rate is 1.433 events/min,
+60.6\% lower than the best baseline in Table~\ref{tab:avg_eviction_rate}. These
+results show that routing-plan relocation does not increase observable instance
+churn under the evaluated configuration.
 
 \begin{figure}[t]
     \centering
@@ -336,13 +341,13 @@ performance instability.
     \vspace{-10pt}
 \end{figure}
 
-\parabf{Instance eviction under monotonic scale-up.}
+\parabf{Runtime impact of monotonic scale-up.}
 Figure~\ref{fig:scaleup_absorption} reports the fraction of scale-up events that
 trigger pod eviction across offered loads, while
 Figure~\ref{fig:instance_lifetime_cdf} compares the instance-lifetime distributions
-of four representative functions. Together, the figures show that monotonic
-scale-up does not cause frequent eviction; instead, it improves instance stability
-and extends instance lifetimes.
+of four representative functions. Together with the overall pod-eviction rate
+and cold-start results, these metrics evaluate whether the eviction-amplification
+risk of in-place scaling translates into increased instance churn.
 
 For \sysname, the fraction of scale-ups causing eviction first increases and then
 decreases with load. At light loads, eviction events initially grow faster than
@@ -352,13 +357,14 @@ to 100\% load, the number of scale-up events increases by $6.34\times$, whereas
 the number causing eviction increases by only $1.48\times$; consequently, their
 fraction falls from 5.05\% to 1.18\%.
 Across \sysname and all baselines, fewer than 15\% of scale-up events cause an
-eviction, confirming that in-place scale-up usually preserves warm instances and
-thereby avoids additional cold starts.
+eviction, indicating that in-place scale-up usually preserves warm instances
+rather than triggering additional cold starts.
 
-Consistent with this result, the CDFs in
-Figure~\ref{fig:instance_lifetime_cdf} are shifted toward longer lifetimes under
-\sysname, indicating lower instance churn. We observe the same trend for the
-other functions and offered loads.
+Consistent with this result, the instance-lifetime CDFs in
+Figure~\ref{fig:instance_lifetime_cdf} shift toward longer lifetimes under
+\sysname. We observe the same trend for the remaining six functions. Under the
+evaluated workloads, these results show that monotonic scale-up does not increase
+instance churn.
 
 \begin{figure*}[t]
     \centering
@@ -391,7 +397,7 @@ unperturbed setting, throughput deviates by at most 9.79\%, while CPU and memory
 utilization deviate by at most 13.70\% and 7.61\%, respectively. Once load exceeds
 cluster capacity, inaccurate predictions can create imbalanced allocations,
 producing less stable performance across load levels; independently sampled
-errors further amplify this variability across functions and routing updates.
+errors further amplify this variability across functions and routing-plan updates.
 Nevertheless, all prediction-error variants retain a
 clear and consistent advantage over the baselines, indicating that \sysname's
 overall performance gains are robust to imperfect demand estimates.
@@ -482,38 +488,15 @@ intra-node resource management.
 
 Scheduling* exhibits a different trade-off. Its CPU and memory utilization are 26.23\% and 12.19\% lower than \sysname, respectively, while its throughput is 6.21\% higher. This result suggests that, without complementary routing, the node-local scheduler favors immediately schedulable requests and thereby increases the completed-request count, but does not align each node's workload with its multidimensional resource capacity. In contrast, \sysname uses complementary routing to admit a more resource-efficient workload mix, substantially improving CPU and memory utilization at the cost of slightly lower throughput in this setting.
 
-\begin{figure*}[t]
-    \centering
-    \subfloat[]{\includegraphics[width=0.32\linewidth]{figures/Eval/16worker_distribution_CPU Utilization.pdf}
-    \label{fig:eval_big_cpu}}
-    \hfil
-    \subfloat[]{\includegraphics[width=0.32\linewidth]{figures/Eval/16worker_distribution_Memory Utilization.pdf}
-    \label{fig:eval_big_memory}}
-    \hfil
-    \subfloat[]{\includegraphics[width=0.32\linewidth]{figures/Eval/16worker_distribution_Task throughput.pdf}
-    \label{fig:eval_big_throughput}}
-    \caption{Performance comparison in 16-worker cluster. (a) CPU Utilization. (b) Memory Utilization. (c) Task throughput.}
-    \vspace{-15pt}
-\label{fig:eval_big}
-\end{figure*}
-
 \subsection{Scalability}
 \label{sec:experiments_overhead}
 
-Finally, we evaluate the scalability of \sysname. Due to testbed limitations, 
-this section includes both real and simulated experiments. We first demonstrate 
-the performance of \sysname on a larger-scale cluster. Then we
-show the system overhead of the \sysname scheduler on up to 1024 nodes.
-
-\parabf{Larger-scale cluster experiment.}
-In the larger-scale cluster experiment, we increased the number of worker nodes 
-to 16 and proportionally scaled the invocation frequency, while keeping 
-other conditions constant. Figure~\ref{fig:eval_big} shows the performance comparison 
-between \sysname and the baselines. Compared to the baselines, \sysname improves 
-CPU utilization by 31.80\%--61.75\%, memory utilization by 41.95\%--53.82\%, 
-and task throughput by 40.24\%--110.75\%. These results align with those observed 
-in the smaller cluster, demonstrating that \sysname maintains its performance 
-advantage consistently at scale.
+Finally, we evaluate the scalability of \sysname. In a 16-worker CloudLab
+experiment, \sysname improves CPU utilization, memory utilization, and task
+throughput over the best-performing baseline by 35.78\%, 39.40\%, and 67.43\%,
+respectively, at 100\% load; Appendix~\ref{app:large-cluster} reports the complete
+results. We then evaluate scheduler overhead on simulated clusters of up to
+1024 workers.
 
 \begin{figure}[t]
     \centering

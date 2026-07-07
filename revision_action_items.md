@@ -154,57 +154,43 @@ Evaluation 中 CPU allocation 的表述已改为：
 
 > We changed the routing-plan update interval to five minutes to provide a sufficiently long observation window for more clearly evaluating the impact of bursty workload changes before the next plan update. This setting is intended to expose system behavior within an update period rather than to represent an empirically optimal update interval. We have also clarified in the Implementation section that the interval is configurable and can be adjusted according to workload volatility.
 
-### [ ] 10. 消除 beneficial swap 与 runtime pod eviction 的术语混淆
+### [x] 10. 消除 beneficial swap 与 runtime pod eviction 的术语混淆
 
-涉及：
+- `SwapCapacity` 的返回符号已从 $\mathcal E$ 统一改为 $\mathcal S$；
+- 统一使用 `internal swap list`、`swapped fraction` 和 `swapped-out demand`；
+- 已明确 internal swap 是 routing-plan computation 中对 assignment matrix 的逻辑重分配步骤，可以涉及从旧 plan 保留的 assignment 或当前 update 中产生的 assignment；
+- 不再使用 `rollback`、`evicted functions`、`evicted load fraction` 或 `eviction list` 描述算法内部操作；
+- 已明确 internal swaps 只修改 assignment matrix，不会直接触发 runtime pod migration 或 eviction。
 
-- `sections/design.tex` 的 `SwapCapacity`；
-- `sections/experiments.tex` 的 `Impact of routing updates`。
+最终 plan 的 net relocation、lazy runtime application 及实际系统影响由第 11--12 项继续处理。
 
-必须明确：算法中的 swap/eviction 是 assignment matrix 上的逻辑回退，不会逐步部署，也不会在每个内部迭代触发 pod eviction。只有最终 routing plan 与当前 plan 的净差异会被系统观察到。
+拟用回复信文本：
 
-建议修改：
+> Thank you for pointing out the potential runtime side effects of beneficial swaps. We have clarified that a beneficial swap in `SwapCapacity` is an internal logical reassignment during routing-plan computation, rather than a runtime pod eviction or migration. It may involve assignments retained from the previous plan or assignments produced during the current update, but each internal operation only modifies the assignment matrix and is never deployed individually. To avoid the previous ambiguity, we rename the internal list from $\mathcal E$ to $\mathcal S$ and consistently use the terms `internal swap list` and `swapped fraction`. The runtime observes only the net difference between consecutive finalized routing plans, whose system-level effects are evaluated through demand relocation, pod eviction, cold starts, and tail latency.
 
-- `evicted functions` → `logically displaced functions`；
-- `evicted load fraction` → `displaced load fraction`；
-- 第一次出现 $\mathcal E$ 时说明它不是 runtime pod-eviction list。
+### [x] 11. 将 swap 图明确为 net demand relocation
 
-建议加入：
+- Figure caption 已改为相邻 finalized routing plans 之间的 `net per-function demand relocation`；
+- 已明确该指标是 partial updates、new-load allocation 和 internal beneficial swaps 的最终合成结果，而不是 internal swap count；
+- 已说明 internal swaps 不会被单独部署，且可能在 plan computation 中被后续操作覆盖；
+- routing-plan changes 随后续请求 lazy application，不会立即迁移所有受影响实例；
+- 已将 plan-level net relocation 与 runtime pod eviction、cold-start rate 和 update-aligned P99 连成证据链。
 
-> The “evictions” in `SwapCapacity` are logical rollbacks of tentative assignments during routing-plan computation, rather than runtime pod evictions. Intermediate swaps only modify the assignment matrix and are never deployed individually.
+### [x] 12. 明确 eviction amplification 与 instance churn 的评价边界
 
-同时解释为什么不报告 internal swaps per update：它依赖启发式搜索路径，可能被后续迭代覆盖，无法对应真实迁移或 runtime overhead。
+- 正文中的 `eviction amplification` 指一次 scale-up 直接驱逐多个 co-located pods，而不是递归 eviction cascade；
+- 论文原文未声称直接测量 eviction cascade，因此不增加“撤回旧 claim”的表述；
+- request-level recursive cascade 缺少可定义的 pod reconstruction lineage，因为 pod 被多个 invocation 共享，且被驱逐 pod 无法与后续同函数 pod 一一对应；
+- function-level eviction peaks 只能提供时序相关性，不能唯一识别递归传播链；
+- Evaluation 使用 scale-up-triggered eviction、overall pod-eviction rate、cold starts、P99 和 instance lifetime 评价直接 eviction pressure 及 aggregate instance churn；
+- 已将 routing-update 结论限定为当前 trace 和 update configuration，并将 monotonic scale-up 结论限定为 evaluated workloads；
+- lifetime 图展示四个 representative functions，另外六个函数也观察到相同趋势。
 
-### [ ] 11. 将 swap 图明确为 net demand relocation
+拟用回复信文本：
 
-Figure `fig:swap_analysis` 应定义为相邻已部署 routing plans 之间的 `net per-function demand relocation`，即 partial update、新负载重新分配和内部 beneficial swaps 的最终合成结果，而不是 beneficial-swap frequency。
-
-正文应建立：
-
-> net relocation → runtime eviction rate → cold start/P99 → lifetime CDF
-
-建议加入：
-
-> Counting internal beneficial-swap operations would not reflect runtime disruption because intermediate assignment changes are never deployed and may be overwritten by subsequent iterations.
-
-### [ ] 12. 将 eviction-cascade 论证改为 instance-churn 论证
-
-原型无法可靠标记 eviction cascade 的事件因果关系，因此不要声称直接测量或排除了 cascade。改为通过其可观察后果论证：
-
-- pod eviction rate；
-- scale-up-triggered eviction fraction；
-- cold-start rate；
-- instance lifetime；
-- update-aligned P99 latency。
-
-建议表达：
-
-> Although our prototype does not causally label eviction cascades, their operational consequences would appear as elevated eviction rates, shorter instance lifetimes, and increased cold starts.
-
-收紧两处结论：
-
-- `does not cause frequent eviction` → `does not increase instance churn under the evaluated workloads`；
-- `neither ... introduces observable instability` → `under this trace and update configuration, we observe no routing-update-aligned latency spikes`。
+> Thank you for raising the concern about node-level contention and eviction amplification under dynamic resizing. In our paper, eviction amplification refers to the direct fan-out of a scale-up event, where one resize may evict multiple co-located pods. To evaluate whether this risk translates into runtime instability, the revised manuscript reports the fraction of scale-up events that trigger pod eviction, the overall pod-eviction rate, cold-start rate, tail latency, and instance-lifetime distributions. From 45\% to 100\% offered load, the number of scale-up events in COSMOS increases by 6.34$\times$, whereas the number causing eviction increases by only 1.48$\times$; consequently, their fraction falls from 5.05\% to 1.18\%. Across all evaluated systems, fewer than 15\% of scale-up events cause pod eviction. COSMOS also achieves a pod-eviction rate of 1.433 events/min, 60.6\% below the best baseline in the burst experiment, while exhibiting longer instance lifetimes and no routing-update-aligned tail-latency spikes outside the burst window.
+>
+> We distinguish this directly observable eviction amplification from a recursive request-level eviction cascade. Tracing such a cascade would require a causal lineage from an evicted pod to its reconstruction and subsequent evictions. However, a serverless pod is shared across multiple invocations, and an evicted pod has no one-to-one correspondence with a subsequently created pod of the same function. Therefore, a unique request-level reconstruction chain is not defined by the execution model. At the function level, correlated eviction peaks can be observed, but they do not identify a unique recursive chain. Accordingly, we evaluate the directly observable eviction pressure and its aggregate operational consequences rather than treating recursive cascades as a separate performance metric. We have also revised the corresponding conclusions to state that COSMOS does not increase observable instance churn under the evaluated workloads and configuration.
 
 ### [x] 13. 完成 fixed CPU-to-memory ratio 的适用范围说明
 
@@ -278,7 +264,7 @@ Discussion 已明确 size-specific prewarmed pools 的核心难点是为每个�
 - simulation 保留哪些 routing/scheduling 计算；
 - 未包含哪些 Kubernetes control-plane、网络或 RPC 开销。
 
-### [~] 22. 增加简短 Discussion/Limitations
+### [x] 22. 增加简短 Discussion/Limitations
 
 已在 Evaluation 后新增 Discussion，完成：
 
@@ -286,7 +272,7 @@ Discussion 已明确 size-specific prewarmed pools 的核心难点是为每个�
 - independent resource modeling 和 multi-profile extension；
 - 算法扩展与 serverless platform allocation interface 之间的依赖。
 
-仍需补充：prototype 无法逐事件标记 eviction cascade。
+不再在 Discussion 中额外引入 eviction-cascade limitation；正文原本未声称测量 recursive cascade，相关评价边界由第 12 项的 Evaluation 文本和回复信处理。
 
 五分钟 update interval 的选择动机只放在回复信，正文 Implementation 仅说明该参数可配置。
 
@@ -360,14 +346,15 @@ Discussion 已明确 size-specific prewarmed pools 的核心难点是为每个�
 - `These scheduling policies are largely ignore` → `These scheduling policies largely ignore`；
 - 最终 PDF 文本中未发现 `Comsupmtion`。
 
-### [ ] 34. 统一 swap/relocation/eviction/churn 术语
+### [x] 34. 统一 swap/relocation/eviction/churn 术语
 
-- `routing-plan update`：五分钟 partial update；
-- `global re-placement`：十分钟全局重算；
-- `beneficial swap`：规划算法内部逻辑 rollback/replacement；
-- `demand relocation`：相邻部署 plans 的净差异；
-- `pod eviction`：运行时真实实例驱逐；
-- `instance churn`：由 eviction、cold start 和 lifetime 体现的运行时抖动。
+- `routing-plan update`：每五分钟执行的 partial update；
+- `global routing-plan recomputation`：每十分钟执行的全局重算；
+- `beneficial swap`：规划算法内部对 assignment matrix 的逻辑 replacement，不使用 `rollback` 或 `eviction` 描述；
+- `internal swap list` $\mathcal S$ / `swapped fraction` $\beta_k$：`SwapCapacity` 的内部输出；
+- `demand relocation`：相邻 routing plans 之间 per-function assignment 的净差异；
+- `pod eviction`：资源压力下真实发生的 runtime pod removal；
+- `instance churn`：由 pod eviction、cold start 和 instance lifetime 体现的 aggregate instance turnover。
 
 ### [~] 35. 控制主文在 16 页以内
 
@@ -376,11 +363,11 @@ Discussion 已明确 size-specific prewarmed pools 的核心难点是为每个�
 - Benchmark Table 改为半栏；
 - resource configurations 移入 Appendix A；
 - Generality 完整图与分析移入 Appendix B；
+- 16-worker large-cluster 完整图与分析移入 Appendix B，主文仅保留 100\% load 结论；
 - Appendix 强制从正文和 Bio 之后的新页面开始。
 
 当前状态：Bio 结束于第 17 页，仍需节省约 1 页。后续优先考虑：
 
-- 将 16-worker large-cluster 详细图移入 supplement，主文保留一句结果；
 - 压缩 Design 中 SwapCapacity 的重复解释；
 - 压缩 benchmark/workload setup 与 Related Work 的重复文字；
 - 完成 Discussion 后重新评估总页数。

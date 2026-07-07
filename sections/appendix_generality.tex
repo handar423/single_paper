@@ -80,3 +80,31 @@ COSMOS improves CPU utilization by 37.34\% and throughput by 99.56\% under the
 default workload; under the 80/20 workload, the gains are 18.31\% and 18.00\%.
 Concentration on two functions naturally improves reuse for all systems and
 reduces COSMOS's optimization headroom, but COSMOS retains an advantage.
+
+\subsection{Larger-scale Cluster Experiment}
+\label{app:large-cluster}
+
+We further evaluate COSMOS on a 16-worker CloudLab cluster. We proportionally
+scale the invocation frequency with the cluster size while keeping the other
+experimental conditions unchanged. Figure~\ref{fig:eval_big} compares COSMOS
+with the baselines across offered loads. At 100\% load, COSMOS improves CPU
+utilization, memory utilization, and task throughput over the best-performing
+baseline by 35.78\%, 39.40\%, and 67.43\%, respectively. These results are
+consistent with those from the default eight-worker cluster.
+
+\begin{figure*}[t]
+    \centering
+    \includegraphics[width=0.58\linewidth]{figures/fig_large_legend.pdf}\\[-10pt]
+    \subfloat[]{\includegraphics[width=0.32\linewidth]{figures/fig_large_cpu.pdf}
+    \label{fig:eval_big_cpu}}
+    \hfil
+    \subfloat[]{\includegraphics[width=0.32\linewidth]{figures/fig_large_mem.pdf}
+    \label{fig:eval_big_memory}}
+    \hfil
+    \subfloat[]{\includegraphics[width=0.32\linewidth]{figures/fig_large_throughput.pdf}
+    \label{fig:eval_big_throughput}}
+    \caption{Performance comparison across offered loads in the 16-worker cluster:
+    (a) CPU utilization, (b) memory utilization, and (c) task throughput. All
+    panels share the legend.}
+    \label{fig:eval_big}
+\end{figure*}
