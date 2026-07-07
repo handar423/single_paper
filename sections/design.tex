@@ -15,7 +15,7 @@ and memory profiles on the same node, thereby mitigating resource stranding;
 and ii) enhancing instance reuse by deliberately narrowing the set of distinct 
 functions served per node. To achieve this, the algorithm proceeds iteratively. 
 In each round, it assigns the workload of a function to one or more worker nodes 
-based on the function's resource profile and, when necessary, rolls back partial 
+based on the function's resource profile and, when necessary, logically swaps partial
 assignments of other already-placed functions to improve complementary packing. 
 For functions requiring distribution across multiple nodes, the algorithm performs 
 fine-grained load splitting according to the function resource demand distribution. 
@@ -275,37 +275,29 @@ prediction methods for further performance gains.
 \end{algorithm}
 
 \parabf{Assignment via beneficial swaps.}
-The SwapCapacity subroutine (Algorithm~\ref{alg:swap-capacity}) determines, for 
-a given node $N_j$ and a target function $F_a$, the maximum additional fraction 
-$\alpha_j^{\text{swap}}$ of $F_a$ demand that can be hosted by beneficially
-swapping out fractions of existing assignments. A swap is considered beneficial only if it increases 
-the overall node utilization $U(N_j)$. This requirement dictates that swaps must 
-consume the node's dominant idle resource: if CPU is idle, $F_a$ must replace 
-more memory-intensive functions (with smaller demand ratio $r_k$); if memory is 
-idle, it must replace more compute-intensive ones (with larger $r_k$). The subroutine 
-takes as input the node idle resource vector $\mathbf{C}_j^{\text{idle}}$, the 
-target function $F_a$, and the current assignment matrix $\mathbf{L}$; it returns 
-the admissible swap capacity $\alpha^{\text{swap}}$ together with the internal
-swap list $\mathcal{S}$.
+The SwapCapacity subroutine (Algorithm~\ref{alg:swap-capacity}) computes the
+maximum fraction $\alpha_j^{\text{swap}}$ of target function $F_a$ that node
+$N_j$ can host by beneficially swapping existing assignments. A swap is
+beneficial only if it increases $U(N_j)$ by consuming the dominant idle
+resource: when CPU is idle, $F_a$ replaces more memory-intensive functions;
+when memory is idle, it replaces more compute-intensive ones. The subroutine
+returns the admissible capacity $\alpha^{\text{swap}}$ and internal swap list
+$\mathcal{S}$.
 
-The subroutine proceeds in four logical steps. First, it identifies the dominant 
-idle resource\textemdash CPU or memory\textemdash since after using the node's free capacity (line~11 
-of Algorithm~\ref{alg:placement}), only one resource dimension may remain idle (lines 2--7). 
-This determines the order in which existing functions are examined: if CPU is 
-idle, functions are sorted by their resource-demand ratio $r_k$ in ascending 
-order (\emph{i.e.}, more memory-intensive functions first); if memory is idle, 
-they are sorted in descending order (more compute-intensive ones first). This ordering 
-ensures that the most beneficial candidates are tried first, because replacing 
-a function with a very complementary resource profile allows $F_a$ to consume 
-more of the idle resource.
+The subroutine proceeds in four logical steps. First, it identifies the dominant
+idle resource\textemdash CPU or memory\textemdash because only one resource dimension may
+remain idle after using the node's free capacity (line~11 of
+Algorithm~\ref{alg:placement}; lines~2--7 of Algorithm~\ref{alg:swap-capacity}).
+Accordingly, SwapCapacity sorts assigned functions by resource-demand ratio
+$r_k$: ascending when CPU is idle and descending when memory is idle, allowing
+the algorithm to swap the most complementary candidates first.
 
 Second, for each candidate function $F_k$ in this sorted list, the algorithm 
 performs a benefit test (line~9). The condition $\operatorname{sign}\cdot(r_a-r_k) > 0$ 
 guarantees that swapping a fraction of $F_k$ for $F_a$ will actually increase 
-$U(N_j)$. Intuitively, if CPU is idle ($\operatorname{sign}=+1$), we must have 
+$U(N_j)$. For example, if CPU is idle ($\operatorname{sign}=+1$), we must have
 $r_a > r_k$, meaning $F_a$ is more compute-intensive than $F_k$ and will better 
-utilize the spare CPU; the converse holds when memory is idle. Candidates that 
-fail this test are skipped.
+utilize the spare CPU.
 
 Third, for a candidate that passes the test, the algorithm computes the fraction
 $\beta_k$ of $F_k$ that can be swapped out without exceeding the node's idle
@@ -314,11 +306,9 @@ resources, and limits it by the amount currently assigned to $N_j$ ($L[j,k]$)
 amount of $F_a$ using $\gamma_k = \beta_k \cdot \min\left(\frac{V_k^{\text{cpu}}}{V_a^{\text{cpu}}}, \frac{V_k^{\text{mem}}}{V_a^{\text{mem}}}\right)$
 (line~13), ensuring that neither CPU nor memory exceeds the released capacity.
 
-Finally, the algorithm accumulates the admissible fractions $\gamma_k$ until 
-either the pending demand $R[a]$ of $F_a$ is exhausted or no further beneficial 
-swaps can be found (lines~14--17). The accumulated total $\alpha^{\text{swap}}$ 
-and the corresponding internal swap list $\mathcal{S}$ are returned to the main loop 
-in Algorithm~\ref{alg:placement}.
+Finally, the algorithm accumulates $\gamma_k$ until $F_a$'s pending demand is
+exhausted or no beneficial candidate remains, then returns $\alpha^{\text{swap}}$
+and $\mathcal{S}$ to the main loop (lines~14--17).
 
 \parabf{Low Overhead via Partial Updates.} To keep the scheduling overhead low, 
 the routing algorithm employs an incremental (partial) update mechanism. Rather 

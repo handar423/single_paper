@@ -368,9 +368,15 @@ Discussion 已明确 size-specific prewarmed pools 的核心难点是为每个�
 
 当前状态：Bio 结束于第 17 页，仍需节省约 1 页。后续优先考虑：
 
-- 压缩 Design 中 SwapCapacity 的重复解释；
-- 压缩 benchmark/workload setup 与 Related Work 的重复文字；
-- 完成 Discussion 后重新评估总页数。
+- 已撤回 2026-07-07 的整篇激进压缩（该版本改动 8 个章节、删减超过 30%，不采用）；
+- 后续只逐项讨论并采用局部改写，目标总计节省约 1--1.5 页；
+- 候选 1（已完成）：适度压缩 Design 中 SwapCapacity 对伪代码步骤的重复解释，保留动机、排序与 benefit test、capacity conversion 和返回结果；
+- 候选 2（已完成）：压缩 Evaluation Setup 中 benchmark/workload 描述，保留 trace 采样、负载归一化、Poisson 到达、CV、正态性检验和 demand fitting 等完整方法信息；
+- 候选 3：Related Work 中逐系统介绍可合并的同义表述；
+- 候选 4：Introduction、Overview 与 Design 之间重复的系统流程概述；
+- 候选 5：实验结果段落中图示事实与随后解释之间的重复。
+
+以上仅记录候选位置，尚未执行压缩；每处改写单独确认。
 
 ## 六、Reviewer—证据映射
 

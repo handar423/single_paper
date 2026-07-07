@@ -42,7 +42,7 @@ the contribution of each design component, and scalability.
 \parabf{Benchmarks.}
 We use the ten SeBS benchmarks characterized in
 \S\ref{sec:background:demand-analysis}. Table~\ref{tab:setup} summarizes their
-functionality, workload categories, and execution times, while
+workload categories and execution times, while
 Figure~\ref{fig:ratio_stability_scatter} characterizes their measured task-level
 resource consumption. Appendix~\ref{app:resource-configurations}, also provided
 as a standalone online supplement, reports the resource configurations used in
@@ -52,34 +52,24 @@ runtime behavior of each benchmark and are applied consistently to all systems.
 
 \parabf{Workload generation.} We generate user traffic based on the 
 Azure Functions Dataset~\cite{ShahradFGCBCLTR20}. For each benchmark, we randomly 
-sample a function invocation trace from the top 20\% most frequently invoked 
-functions, which account for the majority of resource consumption in production 
-environments~\cite{ShahradFGCBCLTR20}, representing the critical bottleneck for 
-cluster performance optimization. The total invocation counts across the ten benchmarks are adjusted to be nearly 
-identical, with relative differences under 2\%. Given that the original trace 
-data is recorded at minute-level granularity, intra-minute request arrivals are 
-modeled as a Poisson process, a standard approach for independent random events 
-in systems and performance~analysis~\cite{Gallager2013Stochastic}. Across the ten
-function traces, the invocation-rate CV averages 55.36\% and ranges from 28.52\%
-to 97.23\%, providing substantial temporal variation for evaluating \sysname
-under bursty and dynamically changing workloads. For each cluster capacity, we
-construct different offered-load levels by proportionally scaling all traces,
-thereby preserving their temporal patterns and preventing differences in trace
-shape from confounding the comparison.
+sample an invocation trace from the top 20\% most frequently invoked functions,
+which account for most production resource consumption~\cite{ShahradFGCBCLTR20}. 
+Their invocation-rate CV averages 55.36\% (range: 28.52--97.23\%), providing 
+substantial temporal variation. Total invocation counts across the ten benchmarks 
+are equalized within 2\%. Because the traces have minute-level granularity, we 
+model intra-minute arrivals as a Poisson process~\cite{Gallager2013Stochastic}. 
+We create offered-load levels by proportionally scaling all traces, preserving 
+their temporal patterns across traffic levels.
 
-To accurately model real-world serverless functions, we first analyze 
-the resource usage distribution in the Azure Functions dataset~\cite{ShahradFGCBCLTR20}. 
-Using both the Shapiro-Wilk~\cite{SHAPIRO1965} and Kolmogorov-Smirnov~\cite{f4feef4d-12ae-314a-a10b-d1f2768e819a} 
-tests for normality, we find that over 95\% of functions exhibit memory usage 
-patterns that do not significantly deviate from a normal distribution (p-value $>$ 0.05). 
-Based on this empirical observation, we model the per-function resource demand 
-as normally distributed across requests. For our evaluation, we randomly select 
-ten functions from the dataset and perform Gaussian fitting to estimate the 
-variance of their memory usage. We then adjust the input data size and parameters 
-of each benchmark so that the actual resource requirements reflect the sampled 
-variance. Since the dataset primarily captures memory demand, CPU allocation is
-assumed to scale proportionally using the specified resource allocation ratio
-for each benchmark (Appendix~\ref{app:resource-configurations}).
+We also use the Azure dataset to model within-function demand variation.
+Shapiro-Wilk~\cite{SHAPIRO1965} and Kolmogorov-Smirnov~\cite{f4feef4d-12ae-314a-a10b-d1f2768e819a}
+tests show that the memory-usage distributions of over 95\% of functions do not
+significantly deviate from normality ($p>0.05$). We therefore randomly select ten
+functions, fit Gaussian distributions to their memory usage, and adjust each
+benchmark's inputs and parameters to reproduce the sampled variance. Because the
+dataset primarily records memory demand, we scale CPU proportionally using each
+benchmark's resource-allocation ratio
+(Appendix~\ref{app:resource-configurations}).
 
 \parabf{Cluster configuration.} Experiments are conducted on CloudLab~\cite{cloudlab} 
 using a cluster of nine c6620 instances (56 cores total, 2$\times$ Intel Xeon 
