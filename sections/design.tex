@@ -1,7 +1,7 @@
 \section{\sysname Design}
 
 \sysname employs a two-level hierarchical orchestration approach for 
-serverless function and request: complementary swarming request routing at the 
+serverless functions and requests: complementary swarming request routing at the
 inter-node level and monotonic scale-up request scheduling at the intra-node level.
 
 \subsection{Complementary Swarming Request Routing}
@@ -18,8 +18,8 @@ In each round, it assigns the workload of a function to one or more worker nodes
 based on the function's resource profile and, when necessary, logically swaps partial
 assignments of other already-placed functions to improve complementary packing. 
 For functions requiring distribution across multiple nodes, the algorithm performs 
-fine-grained load splitting according to the function resource demand distribution. 
-The algorithm outcome is a stable request-to-node mapping that balances complementary 
+fine-grained load splitting according to the function's resource demand distribution.
+The algorithm's outcome is a stable request-to-node mapping that balances complementary
 packing with demand-aware load~distribution.
 
 \subsubsection{Modeling Node Capacity and Function Demand}
@@ -187,7 +187,7 @@ resources, which yields a capacity $\alpha_j^{\text{free}}$ computed as the
 minimum ratio of idle CPU/memory to $F_a$ demand (Line~11); and ii) through 
 beneficial swaps, where the subroutine $\text{SwapCapacity}$ logically replaces
 fractions of existing assignments to host as much of $F_a$ demand as possible,
-provided that doing so improves the node utilization $U_j$ (Line~13, detailed 
+provided that doing so improves the node's utilization $U_j$ (Line~13, detailed
 in Algorithm~\ref{alg:swap-capacity}). $\text{SwapCapacity}$ returns both the 
 maximum $F_a$ demand fraction $\alpha_j^{\text{swap}}$ that can be hosted by 
 function swapping, and an internal swap list $\mathcal{S}_j$ containing pairs
@@ -197,16 +197,16 @@ they do not directly trigger runtime pod migration or eviction. The total accomm
 $N_j$ is then $\alpha_j^{\text{max}} = \min(\alpha_j^{\text{free}}+\alpha_j^{\text{swap}}, R[a])$~(Line~14).
 
 After evaluating all nodes, the algorithm sorts them in descending order of the 
-utilization gain $\Delta U_j$ (Line~17) and assigns $F_a$ pending demand greedily. 
+utilization gain $\Delta U_j$ (Line~17) and assigns $F_a$'s pending demand greedily.
 For each node in this order, it assigns up to $\alpha_j^{\text{max}}$ of $F_a$ demand, 
 updates $\mathbf{L}$ and $\mathbf{R}$ (Line~19), and simultaneously processes 
 the internal swaps in $\mathcal{S}_j$: for each function $F_k$ in $\mathcal{S}_j$, 
 the algorithm reduces the swapped fraction $\beta_k$ in $\mathbf{L}[j, k]$ and 
 adds $\beta_k$ back to $F_k$ pending demand $\mathbf{R}[k]$ (Line~21). This process 
-continues until $F_a$ demand is fully assigned ($R[a]=0$). Because the total 
+continues until $F_a$'s demand is fully assigned ($R[a]=0$). Because the total
 function demand was scaled to match the total cluster capacity in Step 1, it is 
 guaranteed that $F_a$ demand can eventually be fully accommodated, and the loop 
-will not terminate with $R[a] > 0$. To ensure the loop convergence speed, the 
+will not terminate with $R[a] > 0$. To ensure rapid loop convergence, the
 algorithm skips nodes whose utilization gain $\Delta U_j$ is below a predefined 
 empirical threshold (\emph{e.g.}, 1\%).
 
@@ -281,7 +281,7 @@ $N_j$ can host by beneficially swapping existing assignments. A swap is
 beneficial only if it increases $U(N_j)$ by consuming the dominant idle
 resource: when CPU is idle, $F_a$ replaces more memory-intensive functions;
 when memory is idle, it replaces more compute-intensive ones. The subroutine
-returns the admissible capacity $\alpha^{\text{swap}}$ and internal swap list
+returns the admissible capacity $\alpha^{\text{swap}}$ and an internal swap list
 $\mathcal{S}$.
 
 The subroutine proceeds in four logical steps. First, it identifies the dominant
@@ -356,7 +356,7 @@ ordering is the key to enabling efficient in-place scaling: when an instance pro
 requests sequentially from a single queue, its resource allocation can be increased 
 incrementally without~restarts.
 
-\parabf{Request-insertion rule.} When a new request of $F_i$ arrives, its predicted 
+\parabf{Request-insertion rule.} When a new request for $F_i$ arrives, its predicted
 resource demand is compared with the demand of the head (smallest) request in the 
 current queue. If the new demand is smaller, the request is placed into the 
 backup queue; otherwise, it is inserted into the current queue (preserving the 
@@ -369,8 +369,8 @@ resources) or be restarted after a down-scale (incurring cold-start overhead).
 The backup queue holds smaller requests until the current queue is processed,
 after which the queues swap roles.
 
-\parabf{Instance execution and priority-based selection.} A function may have from 
-zero to multiple concurrent warm instances, each dedicated to fetching requests only 
+\parabf{Instance execution and priority-based selection.} A function may have
+zero or more concurrent warm instances, each dedicated to fetching requests only
 from that function's current queue. The scheduler assigns a dynamic priority to 
 each function (detailed in \S\ref{subsec:priority-design}). At every scheduling 
 point\textemdash triggered by a new request arrival or a request completion\textemdash the scheduler selects 
@@ -440,7 +440,7 @@ The three factors are defined as follows:
 
     \item \textbf{Starvation-avoidance factor} ($\text{factor}_2$).  
     Let $W_{\max}$ be the longest waiting time among all pending requests of $F_i$,
-    and let $\overline{T}(F_i)$ be the average execution duration of $F_i$ requests. 
+    and let $\overline{T}(F_i)$ be the average execution duration of requests to $F_i$.
     The starvation factor is zero if no request has been waiting excessively; otherwise 
     it grows with the cumulative waiting time and the total work left in the~queue:
     \[

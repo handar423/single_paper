@@ -77,6 +77,7 @@ model intra-minute arrivals as a Poisson process~\cite{Gallager2013Stochastic}.
 We create offered-load levels by proportionally scaling all traces, preserving 
 their temporal patterns across traffic levels.
 
+\looseness=-1
 We also use the Azure dataset to model within-function demand variation.
 Shapiro-Wilk~\cite{SHAPIRO1965} and Kolmogorov-Smirnov~\cite{f4feef4d-12ae-314a-a10b-d1f2768e819a}
 tests show that the memory-usage distributions of over 95\% of functions do not
@@ -84,7 +85,7 @@ significantly deviate from normality ($p>0.05$). We therefore randomly select te
 functions, fit Gaussian distributions to their memory usage, and adjust each
 benchmark's inputs and parameters to reproduce the sampled variance. Because the
 dataset primarily records memory demand, we scale CPU proportionally using each
-benchmark's resource-allocation ratio reported in the online supplement.
+benchmark's resource-allocation ratio reported in the online~supplement.
 
 \parabf{Cluster configuration.} Experiments are conducted on CloudLab~\cite{cloudlab} 
 using a cluster of nine c6620 instances (56 cores total, 2$\times$ Intel Xeon 
@@ -181,7 +182,7 @@ through a resource-consumption breakdown, the system behavior under bursty workl
 the performance impact of routing-plan updates, and the practical effectiveness
 of monotonic scale-up, as well as its robustness to demand-prediction errors.
 
-\parabf{Detail resource consumption.} We first examine how \sysname changes resource consumption during task processing.
+\parabf{Detailed resource consumption.} We first examine how \sysname changes resource consumption during task processing.
 Figure~\ref{fig:eval_detail} breaks down the average CPU and memory capacity of
 \sysname and the baselines into the following four categories:
 
@@ -238,18 +239,18 @@ facilitating container reuse and in-place scaling.
 \end{figure}
 
 \looseness=-1
-\parabf{Bursty workloads handling.} Figure~\ref{fig:temporal_coldstart_latency}
-shows the minute-level cold-start rate and 99th tail latency after excluding the first five minutes of system warm-up. We use 45\% offered load results here because the baselines already exhibit
+\parabf{Handling bursty workloads.} Figure~\ref{fig:temporal_coldstart_latency}
+shows the minute-level cold-start rate and 99th tail latency after excluding the first five minutes of system warm-up. We present results at 45\% offered load because the baselines already exhibit
 substantial request backlogs at 100\% load.
 
-At minute 26-28, the invocation rate of \textbf{graph-pagerank} rises
+Between minutes 26 and 28, the invocation rate of \textbf{graph-pagerank} rises
 by about $5\times$. This burst is particularly challenging because
 \textbf{graph-pagerank} is among the most resource-demanding benchmarks. 
 As shown in the figure, the burst
 causes sharp increases in both cold starts and tail latency for all systems.
 Nevertheless, \sysname incurs fewer cold starts and a smaller latency spike than
 the baselines, and its tail latency quickly returns toward its pre-burst level. In contrast, the baselines retain elevated tail latency
-and recover more slowly.
+and recover more~slowly.
 
 This difference arises because complementary swarming confines individual function
 demand fluctuations to a small subset of servers, while the resulting
@@ -291,7 +292,7 @@ with demand.
 
 \parabf{Impact of routing-plan updates.} Figure~\ref{fig:swap_analysis} and
 Table~\ref{tab:avg_eviction_rate} further examine the routing-plan updates in the
-experiment of Figure~\ref{fig:temporal_coldstart_latency}. The figure
+experiment shown in Figure~\ref{fig:temporal_coldstart_latency}. The figure
 decomposes the net per-function demand relocation between six pairs of
 consecutive routing plans, while the table reports the observed runtime pod
 eviction rates. This plan-level metric captures the aggregate effect of
@@ -522,6 +523,6 @@ routing plan generation is performed by a separate background process within
 the scheduler. The main scheduling process only receives the resulting routing 
 plan and assigns tasks accordingly. Therefore, only the scheduling overhead 
 contributes to the additional latency in the end-to-end 
-task execution path. As shown, even under a heavy load of 1024 worker nodes, the 
+task execution path. As shown, even with 1024 worker nodes under heavy load, the
 extra scheduling delay added by \sysname remains below 2.5 ms. This overhead is 
 negligible for the vast majority of FaaS scenarios, confirming that the scheduling logic of \sysname remains computationally lightweight at large cluster scales.

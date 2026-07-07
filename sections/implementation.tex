@@ -2,11 +2,11 @@
 \label{sec:implementation}
 
 We implement a prototype of \sysname with $\sim$3100 LOC in Python, using 
-Kubernetes~\cite{k8s} for instance management, Minio~\cite{MinIO} for function 
+Kubernetes~\cite{k8s} for instance management, MinIO~\cite{MinIO} for function
 data management, and SciPy~\cite{scipy} for workload prediction.
 
-\parabf{Instance manager.} We use containers as the serverless function instance 
-based on the Kubernetes container orchestration. Each function instance is exposed 
+\parabf{Instance manager.} We use containers as serverless function instances
+managed through Kubernetes. Each function instance is exposed
 via a unique Pod IP address, which the scheduler maintains in a pod-IP mapping 
 table. Container resource limits and instance placement are enforced through 
 Kubernetes Pod specifications and node-affinity rules, respectively. In the 
@@ -14,8 +14,8 @@ prototype, the scheduler must manage a large number of instances and frequently
 interact with each one to perform lifecycle operations\textemdash including startup, access, 
 scaling, termination, and health monitoring. To reduce control-plane overhead, 
 our implementation leverages the Python Kubernetes client library in a multi-process 
-and multi-coroutine architecture. Since some benchmarks require reading from and 
-writing to external data during execution, we additionally deploy a MinIO service 
+and multi-coroutine architecture. Since some benchmarks require reading and
+writing external data during execution, we additionally deploy a MinIO service
 within the cluster to provide a unified data management layer for the function 
 system.
 
