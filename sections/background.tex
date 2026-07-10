@@ -38,14 +38,14 @@ names and characteristics are listed in Table~\ref{tab:setup}. For each input,
 we measure the CPU time consumed and peak memory usage during task execution,
 averaged across repeated runs. Each point represents one input, and the red line
 is a per-function linear fit. The reported $R^2$ measures the goodness of fit,
-while CV is the coefficient of variation of the per-input CPU-to-memory ratios.
+while CV is the coefficient of variation of the per-input CPU-to-peak-memory ratios.
 The figure omits graph-mst due to space because it closely matches graph-bfs
 ($R^2=0.996$, CV=27.9\%).
 
 Eight of the ten benchmarks exhibit strong input-dependent CPU--memory coupling:
 their CPU and memory demands increase along a stable function-specific direction,
 with linear-fit $R^2$ values between 0.974 and 0.999 and ratio CVs from 5.2\% to
-29.7\%. Thus, although inputs change demand magnitude, the relative resource
+29.7\%. Thus, although inputs change demand magnitude, the relative CPU-to-peak-memory
 profile remains broadly stable and does not typically switch between compute-
 and memory-intensive behavior. This property follows naturally from the
 fine-grained, single-purpose design of serverless functions: each invocation
@@ -66,7 +66,7 @@ while CPU consumption grows with input size.
 
 % 2) 调用级别资源占用
 \parabf{Resource Demand Variation Across Requests.}
-Resource demand also varies significantly across different requests of the same function. We compute the coefficient of variation (CV) for the CPU usage of each function across its request trace. The distribution of these CV values is presented in Figure~\ref{fig:usage_variation}. Our analysis shows that variability is the norm rather than the exception: for 54\% of functions, the CV exceeds 50\%, and an additional 26\% have a CV between 15\% and 50\%. The exact cause of this variation can be multifaceted, including hardware heterogeneity, communication patterns, or\textemdash the primary and widely acknowledged source\textemdash variability in request inputs~(\eg parameters or data size). Regardless of the specific cause, this widespread and often substantial variability directly contradicts the assumption of uniform demand underlying static allocation. Consequently, any static resource allocation must provision for the peak demand of such variable functions, inevitably leading to low average utilization.
+Resource demand also varies significantly across different requests of the same function. We compute the coefficient of variation (CV) for the CPU usage of each function across its request trace. The distribution of these CV values is presented in Figure~\ref{fig:usage_variation}. Our analysis shows that variability is the norm rather than the exception: for 54\% of functions, the CV exceeds 50\%, and an additional 26\% have a CV between 15\% and 50\%. This variation may arise from hardware heterogeneity, communication patterns, and, most commonly, request-input differences~(\eg parameters or data size), as shown in Figure~\ref{fig:ratio_stability_scatter}. Regardless of the specific cause, this widespread and often substantial variability directly contradicts the assumption of uniform demand underlying static allocation. Consequently, any static resource allocation must provision for the peak demand of such variable functions, inevitably leading to low average~utilization.
 
 \begin{figure}[t]
   \centering

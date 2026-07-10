@@ -74,8 +74,10 @@ Their invocation-rate CV averages 55.36\% (range: 28.52--97.23\%), providing
 substantial temporal variation. Total invocation counts across the ten benchmarks 
 are equalized within 2\%. Because the traces have minute-level granularity, we 
 model intra-minute arrivals as a Poisson process~\cite{Gallager2013Stochastic}. 
-We create offered-load levels by proportionally scaling all traces, preserving 
-their temporal patterns across traffic levels.
+Offered-load levels are created by proportionally scaling all traces, preserving 
+their temporal patterns across traffic levels. Load is reported as a percentage
+of cluster CPU capacity, where 100\% denotes aggregate profiled CPU demand
+matching the cluster's allocatable CPU capacity.
 
 \looseness=-1
 We also use the Azure dataset to model within-function demand variation.
@@ -117,8 +119,8 @@ from complementary perspectives:
     control in Golgi by adjusting instance resource allocations, and \textbf{Golgi-NoCC},
     which omits this mechanism. The original Golgi study reports that disabling
     concurrency control changes performance by at most 14\%~\cite{soccGolgi},
-    suggesting that performance detection and Mondrian Forest-based routing
-    account for most of its system advantages.
+    suggesting that performance monitoring and Mondrian Forest-based routing
+    account for most of the system advantages.
 \end{itemize}
 
 Among these three baselines, only FaaSCache provides a publicly available
@@ -130,11 +132,9 @@ evaluated systems.
 \parabf{Metric.} We evaluate system performance using CPU/memory utilization 
 and task throughput as primary metrics. To verify that the scheduling algorithm 
 in \sysname does not lead to task starvation, we also compare the 99th percentile 
-tail latency of task processing. Each experiment runs for half an hour, with the
-first five minutes of data excluded to eliminate the impact 
-of initial cold starts.
+tail latency of task processing. Each experiment runs for 30 minutes, excluding the first five minutes to eliminate cold-start effects. Results are averaged over three runs.
 
-\vspace{-5pt}
+\vspace{-10pt}
 \subsection{Benefits of \sysname}
 \label{sec:experiments_comparsion}
 
@@ -143,7 +143,7 @@ of initial cold starts.
     \includegraphics[width=0.9\columnwidth]{figures/fig_main_latency.pdf}\\[-10pt]
     \caption{99th-percentile tail latency across offered loads.} 
     \label{fig:main_latency}
-    \vspace{-10pt}
+    \vspace{-15pt}
 \end{figure}
 
 \looseness=-1
@@ -155,9 +155,7 @@ light loads (5\%--30\%), all systems achieve nearly identical
 throughput, with differences within 5.82\%, because resources are abundant and
 scheduling efficiency is not yet a bottleneck. The baselines also perform similarly,
 except that Golgi generally incurs higher tail latency, suggesting that its relatively
-aggressive overcommitment involves a tail-latency trade-off. At 30\% load, \sysname
-exhibits 14.40\% lower CPU utilization and 7.98\% lower memory utilization. This
-lower resource consumption is primarily associated with fewer cold starts.
+aggressive overcommitment involves a tail-latency trade-off.
 
 The advantage of \sysname emerges as the offered load approaches cluster capacity.
 At 45\% load, \sysname improves throughput by 12.83\% and reduces the
@@ -212,8 +210,9 @@ memory by 37.34\% and 44.84\%, respectively, over the best-performing baseline.
 Meanwhile, it reduces the corresponding cold-start shares by 77.46\% and
 78.34\%, and increases the standby-instance shares by 19.01\% and 22.38\%.
 Despite processing substantially more tasks, \sysname retains 85.77\% more idle
-CPU than the baseline with the largest idle CPU share, while its idle memory
-share remains within 2.24\% of all baselines.
+CPU than the baseline with the largest idle CPU share, while the idle-memory
+share of \sysname remains comparable to the baselines, differing by at most
+2.24\%.
 
 The resource utilization advantage of \sysname stems from the reduction in cold 
 starts. This is achieved through two strategies. First, the complementary swarming 
@@ -297,9 +296,9 @@ decomposes the net per-function demand relocation between six pairs of
 consecutive routing plans, while the table reports the observed runtime pod
 eviction rates. This plan-level metric captures the aggregate effect of
 beneficial swaps on function-load placement, rather than counting internal swap
-operations, which are never deployed individually. The odd-numbered updates relocate
-only 40.4\%--51.8\% of total demand,
-substantially less than the 72.0\%--76.9\% relocated by the even-numbered updates,
+operations, which are never deployed individually. The even-numbered updates relocate
+only 40.4\%--51.7\% of total demand,
+substantially less than the 72.0\%--76.9\% relocated by the odd-numbered updates,
 demonstrating the effect of partial~updates.
 
 The overall relocated share remains relatively high because \sysname deliberately
@@ -307,12 +306,7 @@ adopts an aggressive reallocation policy: upon detecting an increase in a
 function's load, it reallocates that function's full demand rather than only the
 increment. This design prioritizes concentrating each function on fewer servers,
 as function concentration has a greater performance impact than minimizing the
-magnitude of each load adjustment. Routing-plan changes are applied lazily as
-subsequent requests arrive rather than by eagerly migrating all affected
-instances, so the plan-level relocation overstates the workload immediately
-affected at runtime. Under this trace and update configuration,
-Figure~\ref{fig:temporal_coldstart_latency} shows no routing-update-aligned
-tail-latency spikes outside the burst window. Moreover, \sysname incurs fewer
+magnitude of each load adjustment. Routing-plan changes are applied lazily as subsequent requests arrive rather than by eagerly migrating all affected instances, so the plan-level relocation overstates the workload immediately affected at runtime. As shown in Figure~\ref{fig:temporal_coldstart_latency}, \sysname does not exhibit routing-update-induced tail-latency spikes outside the burst window. Moreover, \sysname incurs fewer
 cold starts than the baselines, and its pod-eviction rate is 1.433 events/min,
 60.6\% lower than the best baseline in Table~\ref{tab:avg_eviction_rate}. These
 results show that routing-plan relocation does not increase observable instance
@@ -355,8 +349,7 @@ rather than triggering additional cold starts.
 
 Consistent with this result, the instance-lifetime CDFs in
 Figure~\ref{fig:instance_lifetime_cdf} shift toward longer lifetimes under
-\sysname. We observe the same trend for the remaining six functions. Under the
-evaluated workloads, these results show that monotonic scale-up does not increase
+\sysname. We observe the same trend for the remaining six functions. These results show that monotonic scale-up does not increase
 instance churn.
 
 \begin{figure*}[t]
@@ -384,10 +377,10 @@ by $1+\epsilon$, where $\epsilon$ is uniformly sampled from $[-x,x]$. For a
 $\pm y\%$ systematic-bias setting, every predicted function load is multiplied
 by the fixed factor $1+y$ or $1-y$, respectively. For readability, we show only
 Palette and FaaSCache as representative baselines. When offered load remains
-within cluster capacity, injected errors have little effect because available
-resource slack can absorb moderate allocation inaccuracies: relative to the
-unperturbed setting, throughput deviates by at most 9.79\%, while CPU and memory
-utilization deviate by at most 13.70\% and 7.61\%, respectively. Once load exceeds
+within cluster capacity, the impact of injected errors remains bounded because
+available resource slack can absorb moderate allocation inaccuracies: relative
+to the unperturbed setting, throughput deviates by at most 9.79\%, while CPU and
+memory utilization deviate by at most 13.70\% and 7.61\%, respectively. Once load exceeds
 cluster capacity, inaccurate predictions can create imbalanced allocations,
 producing less stable performance across load levels; independently sampled
 errors further amplify this variability across functions and routing-plan updates.
@@ -434,13 +427,17 @@ and function-popularity distributions. Table~\ref{tab:generality-summary}
 first reports the default configuration from the main experiment and then
 summarizes three generality dimensions at 100\% offered load. Each entry gives
 the best baseline and \sysname absolute values, followed by \sysname's relative
-gain. \sysname improves both CPU utilization and throughput in all settings.
-Its advantage grows with function diversity because
-complementary swarming has more opportunities to improve locality and resource
-matching, whereas highly skewed popularity increases reuse opportunities even
-for the baselines and therefore reduces the optimization headroom. The online
-supplement provides the complete load-sweep figures, scenario definitions, and
-detailed analysis.
+gain. To save space, subsequent experiments omit Golgi-NoCC.
+
+Cluster resource distributions have limited impact on \sysname's gains,
+whereas reduced workload diversity, caused by fewer functions or skewed
+popularity, lowers the optimization headroom because fewer workload types
+naturally increase instance reuse even for the baselines. Nevertheless,
+\sysname improves both CPU utilization and throughput in all settings. Since
+real platforms host far more popular functions than our testbed, these
+experiments demonstrate generality rather than suggest that \sysname is
+unsuitable for skewed real-world workloads. The online supplement provides the
+complete load-sweep figures, scenario definitions, and detailed~analysis.
 
 {
 \begin{figure}[t]
@@ -483,7 +480,7 @@ Scheduling* exhibits a different trade-off. Its CPU and memory utilization are 2
 \subsection{Scalability}
 \label{sec:experiments_overhead}
 
-Finally, we evaluate the scalability of \sysname. In a 16-worker CloudLab
+Finally, we evaluate the scalability of \sysname. In a 16-worker cluster
 experiment, \sysname improves CPU utilization, memory utilization, and task
 throughput over the best-performing baseline by 35.78\%, 39.40\%, and 67.43\%,
 respectively, at 100\% load; the online supplement reports the complete results.
@@ -500,12 +497,11 @@ We then evaluate scheduler overhead on simulated clusters of up to
 \end{figure}
 
 \parabf{System overhead.}
-We next evaluate the overhead of the \sysname scheduler under varying cluster 
+We evaluate the overhead of the \sysname scheduler under varying cluster 
 sizes and user traffic. To do so, we simulate scheduler load for clusters 
-ranging from 32 to 1024 worker nodes. To avoid interference from bursty traffic 
-patterns, we generate invocations at a steady rate instead of using a real-world 
-trace. The experimental results 
-are presented in Figure~\ref{fig:overhead}. 
+ranging from 32 to 1024 worker nodes, scaling function load proportionally with
+cluster size and sweeping each cluster up to 150\% offered load. The
+experimental results are presented in Figure~\ref{fig:overhead}. 
 
 The upper panel of Figure~\ref{fig:overhead} shows the average duration for \sysname to generate 
 cluster-wide request routing plans. It can be observed 

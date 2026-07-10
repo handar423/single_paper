@@ -15,8 +15,8 @@ and memory profiles on the same node, thereby mitigating resource stranding;
 and ii) enhancing instance reuse by deliberately narrowing the set of distinct 
 functions served per node. To achieve this, the algorithm proceeds iteratively. 
 In each round, it assigns the workload of a function to one or more worker nodes 
-based on the function's resource profile and, when necessary, logically swaps partial
-assignments of other already-placed functions to improve complementary packing. 
+based on the function's resource profile and, when necessary, updates existing
+workload partitions to improve complementary packing.
 For functions requiring distribution across multiple nodes, the algorithm performs 
 fine-grained load splitting according to the function's resource demand distribution.
 The algorithm's outcome is a stable request-to-node mapping that balances complementary
@@ -45,13 +45,14 @@ Here, we simply sum CPU and memory utilization because function demands will be 
 more nuanced. We characterize it along three orthogonal dimensions:
 
 \begin{enumerate}
-    \item \textbf{Demand Ratio ($r_i$)}: The intrinsic CPU-to-memory ratio required 
-    by a single execution of function $F_i$. The value of $r_i$ quantitatively 
+    \item \textbf{Demand Ratio ($r_i$)}: The intrinsic CPU-to-memory demand ratio required 
+    by a single execution of function $F_i$, where memory demand is represented
+    by the peak memory footprint. The value of $r_i$ quantitatively 
     indicates a function's resource affinity: a relatively small $r_i$ signifies 
     memory-intensive behavior, whereas a relatively large $r_i$ corresponds to 
     compute-intensive behavior. To reduce problem complexity, we assume this 
     ratio remains invariant across requests of the same function. This assumption
-    is consistent with the stable CPU-to-memory profiles observed in Figure~\ref{fig:ratio_stability_scatter}. 
+    is consistent with the stable CPU-to-peak-memory profiles observed in Figure~\ref{fig:ratio_stability_scatter}. 
     We discuss
     the single-resource-dominant exceptions and the scope of this model in
     \S\ref{sec:discussion}.
@@ -61,7 +62,9 @@ more nuanced. We characterize it along three orthogonal dimensions:
     $\mathbf{V}_i = \left(V_i^{\text{cpu}}, V_i^{\text{mem}}\right)$. Here, $V_i^{\text{cpu}}$ and 
     $V_i^{\text{mem}}$ represent the predicted total CPU (\emph{e.g.}, in core-seconds) 
     and memory (\emph{e.g.}, in GB-seconds) required to process all expected 
-    requests of $F_i$ in that window, respectively. While the accurate 
+    requests of $F_i$ in that window, respectively. Specifically, $V_i^{\text{mem}}$
+    is computed as the peak memory footprint multiplied by execution time,
+    reflecting the memory capacity reserved to avoid OOM. While the accurate 
     prediction of $V_i$ is orthogonal to our placement algorithm (and its accuracy 
     naturally affects overall performance), our design accepts such a predicted 
     vector as input.
@@ -185,9 +188,9 @@ a function $F_a$ with pending demand ($R[a] > 0$, Line~8). For each node $N_j$,
 the algorithm evaluates two ways to accommodate $F_a$: i) using the idle node 
 resources, which yields a capacity $\alpha_j^{\text{free}}$ computed as the 
 minimum ratio of idle CPU/memory to $F_a$ demand (Line~11); and ii) through 
-beneficial swaps, where the subroutine $\text{SwapCapacity}$ logically replaces
+beneficial swaps, where the subroutine $\text{SwapCapacity}$ replaces
 fractions of existing assignments to host as much of $F_a$ demand as possible,
-provided that doing so improves the node's utilization $U_j$ (Line~13, detailed
+provided that doing so improves the node's utilization $U(N_j)$ (Line~13, detailed
 in Algorithm~\ref{alg:swap-capacity}). $\text{SwapCapacity}$ returns both the 
 maximum $F_a$ demand fraction $\alpha_j^{\text{swap}}$ that can be hosted by 
 function swapping, and an internal swap list $\mathcal{S}_j$ containing pairs
@@ -277,20 +280,20 @@ prediction methods for further performance gains.
 \parabf{Assignment via beneficial swaps.}
 The SwapCapacity subroutine (Algorithm~\ref{alg:swap-capacity}) computes the
 maximum fraction $\alpha_j^{\text{swap}}$ of target function $F_a$ that node
-$N_j$ can host by beneficially swapping existing assignments. A swap is
-beneficial only if it increases $U(N_j)$ by consuming the dominant idle
+$N_j$ can host by proactively identifying beneficial swaps among existing
+assignments. A swap is beneficial only if it increases $U(N_j)$ by consuming the dominant idle
 resource: when CPU is idle, $F_a$ replaces more memory-intensive functions;
 when memory is idle, it replaces more compute-intensive ones. The subroutine
 returns the admissible capacity $\alpha^{\text{swap}}$ and an internal swap list
 $\mathcal{S}$.
 
-The subroutine proceeds in four logical steps. First, it identifies the dominant
+The subroutine proceeds in four steps. First, it identifies the dominant
 idle resource\textemdash CPU or memory\textemdash because only one resource dimension may
 remain idle after using the node's free capacity in
-Algorithm~\ref{alg:placement} (lines~2--7).
+Algorithm~\ref{alg:placement}.
 Accordingly, SwapCapacity sorts assigned functions by resource-demand ratio
 $r_k$: ascending when CPU is idle and descending when memory is idle, allowing
-the algorithm to swap the most complementary candidates first.
+the algorithm to swap the most complementary candidates first (lines~2--7).
 
 \looseness=-1
 Second, the algorithm performs a benefit test for each candidate function $F_k$ in the sorted list (line~9). The condition $\operatorname{sign}\cdot(r_a-r_k) > 0$ 
@@ -458,7 +461,7 @@ The three factors are defined as follows:
     Let $t_{\text{first}}$ and $t_{\text{last}}$ be the requests with the smallest 
     and largest predicted resource demands in $F_i$'s current queue, respectively. 
     Under the assumption that all requests of the same function share the same 
-    CPU-to-memory ratio (see \S\ref{subsec:modeling}), the ratio can be computed 
+    CPU-to-peak-memory demand ratio (see \S\ref{subsec:modeling}), the ratio can be computed 
     using either dimension; we use memory for concreteness:
     \[
     \text{factor}_3 = \frac{t_{\text{first}}^{\text{mem}}}{t_{\text{last}}^{\text{mem}}}.
