@@ -1,25 +1,31 @@
+\vspace{-5pt}
 \section{Discussion}
 \label{sec:discussion}
 
 \parabf{Scope of the resource-profile model.}
-\sysname primarily targets fine-grained functions whose requests vary in demand
-magnitude while retaining an approximately stable CPU-to-memory profile. The
-current design can also operate with single-resource-dominant streaming functions,
-such as video-processing and uploader in Figure~\ref{fig:ratio_stability_scatter},
-but representing them with a fixed resource ratio may over-allocate the less
-variable resource. We retain this model because it is compatible with the static
-and often coupled resource-allocation model exposed by existing serverless
-platforms (\S\ref{sec:background:resource-management}). A natural extension is
-to model CPU and memory demands independently during routing and scaling;
-realizing its full benefit would also require serverless platforms to expose
-independently adjustable per-resource allocations.
+\sysname models each function with a stable CPU-to-memory demand ratio and a
+variable demand magnitude. This model is broadly applicable to fine-grained
+serverless functions because many of them are single-purpose and exhibit stable
+CPU-to-peak-memory profiles, as shown in
+Figure~\ref{fig:ratio_stability_scatter}.
 
-Complex applications whose execution phases have qualitatively different
-resource profiles are commonly decomposed into separate functions, allowing
-each phase to be provisioned independently. If such phases are inseparably
-embedded within one function, however, a single demand ratio is insufficient.
-Supporting these workloads would require multiple resource profiles and
-request-level profile classification, which we leave for future work.
+Single-resource-dominant streaming functions, such as video-processing and
+uploader in Figure~\ref{fig:ratio_stability_scatter}, can still be represented
+within the current model by assigning a conservative fixed resource ratio. This
+may over-allocate the less variable resource but preserves normal system operation.
+Providing specialized support for streaming functions would require extending
+both the demand model and the SwapCapacity routine to allow a function's demand
+ratio to vary with request size.
+
+\looseness=-1
+The current model does not directly support complex functions whose resource
+consumption pattern changes qualitatively across requests. For such cases, a
+natural extension is to classify requests into several virtual functions,
+each with a single resource profile, and then apply the existing routing model to
+those virtual functions. A more fundamental approach is to refactor such
+functions by splitting branching or multi-stage processing logic into more
+independent tasks, making their resource behavior easier for \sysname or other resource schedulers
+to model stably. We leave these extensions to future work.
 
 \parabf{Vertical scaling versus size-specific pools.}
 The central challenge in predictive horizontal scaling with size-specific

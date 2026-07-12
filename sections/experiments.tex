@@ -46,7 +46,7 @@ the contribution of each design component, and scalability.
     \subfloat[]{\includegraphics[width=0.32\linewidth]{figures/fig_main_throughput.pdf}%
     \label{fig:main_throughput}}
     \caption{Main-experiment comparison across offered loads: (a) CPU utilization,
-    (b) memory utilization, and (c) task throughput. All panels share the legend.}
+    (b) memory utilization, and (c) task throughput.}
     \label{fig:main_resources}
     \vspace{-10pt}
 \end{figure*}
@@ -193,7 +193,7 @@ Figure~\ref{fig:eval_detail} breaks down the average CPU and memory capacity of
     \subfloat[]{\includegraphics[width=0.48\linewidth]{figures/fig_resource_breakdown_mem.pdf}%
     \label{fig:eval_detail_memory}}
     \caption{Resource usage breakdown of \sysname and the baselines under the
-    default configuration at 100\% offered load. (a) CPU. (b) memory.}
+    default configuration at 100\% offered load: (a) CPU and (b) memory.}
     \vspace{-10pt}
 \label{fig:eval_detail}
 \end{figure}
@@ -229,8 +229,8 @@ facilitating container reuse and in-place scaling.
 \begin{figure}[t]
     \centering
     \includegraphics[width=\columnwidth]{figures/fig_temporal_coldstart_latency.pdf} \\ [-10pt]
-    \caption{Minute-level cold-start rate and 99th tail latency under bursty load
-    at 45\% offered load.
+    \caption{Minute-level cold-start rate and 99th-percentile tail latency under
+    bursty load and routing-plan updates.
     Dashed vertical lines mark \sysname routing-plan updates, and shaded regions
     indicate detected burst windows.}
     \label{fig:temporal_coldstart_latency}
@@ -239,7 +239,7 @@ facilitating container reuse and in-place scaling.
 
 \looseness=-1
 \parabf{Handling bursty workloads.} Figure~\ref{fig:temporal_coldstart_latency}
-shows the minute-level cold-start rate and 99th tail latency after excluding the first five minutes of system warm-up. We present results at 45\% offered load because the baselines already exhibit
+shows the minute-level cold-start rate and 99th-percentile tail latency after excluding the first five minutes of system warm-up. We present results at 45\% offered load because the baselines already exhibit
 substantial request backlogs at 100\% load.
 
 Between minutes 26 and 28, the invocation rate of \textbf{graph-pagerank} rises
@@ -317,7 +317,7 @@ churn.
     \includegraphics[width=0.85\columnwidth]{figures/fig_scaleup_absorption.pdf} \\ [-10pt]
     \caption{Fraction of scale-up events that cause pod eviction across offered loads.}
     \label{fig:scaleup_absorption}
-    \vspace{-10pt}
+    \vspace{-15pt}
 \end{figure}
 
 \begin{figure}[t]
@@ -349,8 +349,7 @@ rather than triggering additional cold starts.
 
 Consistent with this result, the instance-lifetime CDFs in
 Figure~\ref{fig:instance_lifetime_cdf} shift toward longer lifetimes under
-\sysname. We observe the same trend for the remaining six functions. These results show that monotonic scale-up does not increase
-instance churn.
+\sysname. We observe the same trend for the remaining six functions. These results show that monotonic scale-up does not increase instance~churn.
 
 \begin{figure*}[t]
     \centering
@@ -365,6 +364,7 @@ instance churn.
     \label{fig:robustness_throughput}}
     \caption{Robustness under demand-prediction errors across offered loads:
     (a) CPU utilization, (b) memory utilization, and (c) task throughput.}
+    \vspace{-12pt}
     \label{fig:robustness}
 \end{figure*}
 
@@ -389,8 +389,7 @@ clear and consistent advantage over the baselines, indicating that \sysname's
 overall performance gains are robust to imperfect demand estimates.
 
 \begin{table}[t]
-    \caption{Performance at 100\% offered load. Each entry reports best
-    baseline/COSMOS, with COSMOS's relative gain in parentheses.}
+    \caption{Generality performance at 100\% offered load.}
     \label{tab:generality-summary}
     \centering
     \scriptsize
@@ -443,7 +442,7 @@ complete load-sweep figures, scenario definitions, and detailed~analysis.
 \begin{figure}[t]
     \centering
     \includegraphics[width=\columnwidth]{figures/fig_ablation.pdf} \\ [-10pt]
-    \caption{Performance comparison among \sysname, baselines and simplified variants.}
+    \caption{Performance comparison among \sysname, the baselines, and simplified~variants.}
     \label{fig:technique}
     \vspace{-15pt}
 \end{figure}
