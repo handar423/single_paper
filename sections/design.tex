@@ -229,14 +229,12 @@ rather than a fixed sequence; the figure omits this step for simplicity.
 to the resource-demand percentiles of $F_i$'s requests (right side of 
 Figure~\ref{fig:placement_p}). Specifically, using $F_i$'s historical demand 
 distribution $D_i$, we pre-compute the resource-demand boundaries that correspond 
-to each percentile sub-interval. When a new request arrives, its actual resource 
-demand (derived from input parameters and data size) is located on $D_i$ to obtain 
+to each percentile sub-interval. When a new request arrives, its estimated resource
+demand (derived from input parameters and data size) is located on $D_i$ to obtain
 its percentile $p$. The request is then routed to the node $N_j$ for which 
 $\mathcal{P}(F_i, p) = N_j$. For example, the newly arrived request marked in 
 the figure, whose demand percentile falls inside $[0.8, 1]$, would be routed 
-to Node C. Our experiments obtain accurate demand estimates from the benchmark's 
-known input characteristics; the algorithm can be coupled with more sophisticated 
-prediction methods for further performance gains.
+to Node C. 
 
 \begin{algorithm}[t]
 \caption{SwapCapacity: Compute beneficial swap capacity}

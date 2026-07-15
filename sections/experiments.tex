@@ -48,10 +48,10 @@ the contribution of each design component, and scalability.
     \caption{Main-experiment comparison across offered loads: (a) CPU utilization,
     (b) memory utilization, and (c) task throughput.}
     \label{fig:main_resources}
-    \vspace{-10pt}
+    \vspace{-15pt}
 \end{figure*}
 
-\vspace{-5pt}
+\vspace{-10pt}
 \subsection{Evaluation Setup}
 \vspace{-5pt}
 \label{sec:experiments_setup}
@@ -134,10 +134,6 @@ and task throughput as primary metrics. To verify that the scheduling algorithm
 in \sysname does not lead to task starvation, we also compare the 99th percentile 
 tail latency of task processing. Each experiment runs for 30 minutes, excluding the first five minutes to eliminate cold-start effects. Results are averaged over three runs.
 
-\vspace{-10pt}
-\subsection{Benefits of \sysname}
-\label{sec:experiments_comparsion}
-
 \begin{figure}[t]
     \centering
     \includegraphics[width=0.9\columnwidth]{figures/fig_main_latency.pdf}\\[-10pt]
@@ -145,6 +141,10 @@ tail latency of task processing. Each experiment runs for 30 minutes, excluding 
     \label{fig:main_latency}
     \vspace{-15pt}
 \end{figure}
+
+\vspace{-10pt}
+\subsection{Benefits of \sysname}
+\label{sec:experiments_comparsion}
 
 \looseness=-1
 Figures~\ref{fig:main_resources} and~\ref{fig:main_latency}
@@ -172,6 +172,7 @@ node capacity to reduce fragmentation. Monotonic scale-up further reduces
 over-provisioning and cold starts, sustaining higher utilization and throughput
 as load rises.
 
+\vspace{-10pt}
 \subsection{Performance Analysis}
 \label{sec:experiments_analysis}
 
@@ -186,7 +187,7 @@ Figure~\ref{fig:eval_detail} breaks down the average CPU and memory capacity of
 
 \begin{figure}[t]
     \centering
-    \includegraphics[width=0.75\linewidth]{figures/fig_resource_breakdown_legend.pdf}\\[-13pt]
+    \includegraphics[width=0.65\linewidth]{figures/fig_resource_breakdown_legend.pdf}\\[-15pt]
     \subfloat[]{\includegraphics[width=0.48\linewidth]{figures/fig_resource_breakdown_cpu.pdf}%
     \label{fig:eval_detail_cpu}}
     \hfill
@@ -194,7 +195,7 @@ Figure~\ref{fig:eval_detail} breaks down the average CPU and memory capacity of
     \label{fig:eval_detail_memory}}
     \caption{Resource usage breakdown of \sysname and the baselines under the
     default configuration at 100\% offered load: (a) CPU and (b) memory.}
-    \vspace{-10pt}
+    \vspace{-15pt}
 \label{fig:eval_detail}
 \end{figure}
 
@@ -228,13 +229,13 @@ facilitating container reuse and in-place scaling.
 
 \begin{figure}[t]
     \centering
-    \includegraphics[width=\columnwidth]{figures/fig_temporal_coldstart_latency.pdf} \\ [-10pt]
+    \includegraphics[width=0.9\columnwidth]{figures/fig_temporal_coldstart_latency.pdf} \\ [-10pt]
     \caption{Minute-level cold-start rate and 99th-percentile tail latency under
     bursty load and routing-plan updates.
     Dashed vertical lines mark \sysname routing-plan updates, and shaded regions
     indicate detected burst windows.}
     \label{fig:temporal_coldstart_latency}
-    \vspace{-10pt}
+    \vspace{-15pt}
 \end{figure}
 
 \looseness=-1
@@ -269,7 +270,7 @@ with demand.
     The legend identifies the five functions with the largest average relocated
     shares.}
     \label{fig:swap_analysis}
-    \vspace{-10pt}
+    \vspace{-15pt}
 \end{figure}
 
 \begin{table}[t]
@@ -314,7 +315,7 @@ churn.
 
 \begin{figure}[t]
     \centering
-    \includegraphics[width=0.85\columnwidth]{figures/fig_scaleup_absorption.pdf} \\ [-10pt]
+    \includegraphics[width=0.8\columnwidth]{figures/fig_scaleup_absorption.pdf} \\ [-10pt]
     \caption{Fraction of scale-up events that cause pod eviction across offered loads.}
     \label{fig:scaleup_absorption}
     \vspace{-15pt}
@@ -325,7 +326,7 @@ churn.
     \includegraphics[width=\columnwidth]{figures/fig_instance_lifetime_cdf.pdf} \\ [-10pt]
     \caption{CDFs of instance lifetimes for representative functions in Figure~\ref{fig:temporal_coldstart_latency}.}
     \label{fig:instance_lifetime_cdf}
-    \vspace{-10pt}
+    \vspace{-18pt}
 \end{figure}
 
 \parabf{Runtime impact of monotonic scale-up.}
@@ -353,7 +354,7 @@ Figure~\ref{fig:instance_lifetime_cdf} shift toward longer lifetimes under
 
 \begin{figure*}[t]
     \centering
-    \includegraphics[width=0.94\linewidth]{figures/fig_robustness_legend.pdf}\\[-15pt]
+    \includegraphics[width=0.84\linewidth]{figures/fig_robustness_legend.pdf}\\[-15pt]
     \subfloat[]{\includegraphics[width=0.32\linewidth]{figures/fig_robustness_cpu.pdf}%
     \label{fig:robustness_cpu}}
     \hfil
@@ -364,7 +365,7 @@ Figure~\ref{fig:instance_lifetime_cdf} shift toward longer lifetimes under
     \label{fig:robustness_throughput}}
     \caption{Robustness under demand-prediction errors across offered loads:
     (a) CPU utilization, (b) memory utilization, and (c) task throughput.}
-    \vspace{-12pt}
+    \vspace{-15pt}
     \label{fig:robustness}
 \end{figure*}
 
@@ -390,6 +391,7 @@ overall performance gains are robust to imperfect demand estimates.
 
 \begin{table}[t]
     \caption{Generality performance at 100\% offered load.}
+    \vspace{-5pt}
     \label{tab:generality-summary}
     \centering
     \scriptsize
@@ -416,8 +418,10 @@ overall performance gains are robust to imperfect demand estimates.
         \bottomrule
     \end{tabular}
     }
+    \vspace{-10pt}
 \end{table}
 
+\vspace{-10pt}
 \subsection{Generality}
 \label{sec:experiments_generality}
 
@@ -441,13 +445,14 @@ complete load-sweep figures, scenario definitions, and detailed~analysis.
 {
 \begin{figure}[t]
     \centering
-    \includegraphics[width=\columnwidth]{figures/fig_ablation.pdf} \\ [-10pt]
+    \includegraphics[width=0.93\columnwidth]{figures/fig_ablation.pdf} \\ [-10pt]
     \caption{Performance comparison among \sysname, the baselines, and simplified~variants.}
     \label{fig:technique}
-    \vspace{-15pt}
+    \vspace{-20pt}
 \end{figure}
 }
 
+\vspace{-15pt}
 \subsection{Effectiveness of \sysname}
 \label{sec:experiments_technique}
 
