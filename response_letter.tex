@@ -52,9 +52,9 @@ Dear EiC, AE, and Reviewers:
 Thank you very much for your effort in reviewing our manuscript and for your valuable feedback. We have carefully addressed every point raised by the reviewers and revised the manuscript accordingly. In particular, we have made the following changes:
 
 \begin{enumerate}[label=\arabic*.]
-  \item Regarding the fixed CPU--memory demand-ratio assumption, we added CPU--memory demand-ratio measurements for open-source benchmarks in the Background and added explanation about the model scope and boundary cases in the Discussion, as suggested by Reviewers 1, 2, and 3.
+  \item Regarding the fixed CPU--memory demand-ratio assumption, we added CPU--memory demand-ratio measurements for open-source benchmarks in the Background and added an explanation of the model scope and boundary cases in the Discussion, as suggested by Reviewers 1, 2, and 3.
   \item We added analyses of node-level resource contention behavior in the Evaluation, including eviction frequency, eviction pressure caused by in-place scale-up, and the resulting impact on instance lifetime, as suggested by Reviewer 1.
-  \item We added performance analyses under bursty workload and high offered load in the Evaluation, as suggested by Reviewer 1 and 2.
+  \item We added performance analyses under bursty workloads and high offered loads in the Evaluation, as suggested by Reviewers 1 and 2.
   \item We clarified the relationship between beneficial swaps and function relocation, and reported the function-relocation ratio and its actual performance impact during routing-plan updates in the Evaluation, as suggested by Reviewer 1.
   \item We added a discussion in Related Work to clarify the differences between \sysname and Golgi, as suggested by Reviewer 2.
   \item We revised the Introduction to clarify the novelty of \sysname, as suggested by Reviewer 2.
@@ -69,7 +69,7 @@ Thank you very much for your effort in reviewing our manuscript and for your val
 
 Following this summary, we provide detailed responses to the comments raised by the three reviewers. For ease of review, we place each comment in a gray box and provide the corresponding response below it. Section, figure, and table references in this letter refer to the revised manuscript unless explicitly stated otherwise.
 
-To facilitate reviewers to quickly locate the revised content, we attach the complete revised paper at the end of this PDF and highlight the modified parts in {\color{blue}BLUE}. We also upload the highlighted revised version in the “Supplementary Material for Review”.
+To help reviewers quickly locate the revised content, we attach the complete revised paper at the end of this PDF and highlight the modified parts in {\color{blue}BLUE}. We also upload the highlighted revised version in the “Supplementary Material for Review”.
 
 We highly appreciate your time and effort in reassessing our manuscript.
 
@@ -95,7 +95,7 @@ Eight of the ten benchmarks exhibit strong input-dependent CPU--memory coupling:
 \end{revisionquote}
 
 \begin{quote}\small
-[37] M.~Copik, G.~Kwasniewski, M.~Besta, M.~Podstawski, and T.~Hoefler, ``Sebs: A serverless benchmark suite for function-as-a-service computing,'' in \emph{Proceedings of the 22nd International Middleware Conference}, ser. Middleware '21, p. 64--78.
+[37] M.~Copik, G.~Kwasniewski, M.~Besta, M.~Podstawski, and T.~Hoefler, ``SeBS: A serverless benchmark suite for function-as-a-service computing,'' in \emph{Proceedings of the 22nd International Middleware Conference}, ser. Middleware '21, p. 64--78.
 \end{quote}
 
 The transformer example raised by the reviewer further illustrates why function boundaries matter. Prefill--decode disaggregation has become a mainstream design in modern LLM serving systems, as exemplified by DistServe (OSDI~'24). In this design, the prefill and decoding stages are deployed as separate, independently scalable components. If these stages are represented as separate serverless functions, the prefill function and decoding function each have a relatively consistent resource profile, even though the complete inference application contains both compute-intensive and memory-intensive stages. Accordingly, we clarified the rationale, applicability, and boundary of the resource-profile model in Section~VII:
@@ -285,7 +285,7 @@ On page 4, line 22, ``a increment-only strategy'' $\rightarrow$ ``an increment-o
 \end{revisionquote}
 
 \begin{quote}\small
-[37] M.~Copik, G.~Kwasniewski, M.~Besta, M.~Podstawski, and T.~Hoefler, ``Sebs: A serverless benchmark suite for function-as-a-service computing,'' in \emph{Proceedings of the 22nd International Middleware Conference}, ser. Middleware '21, p. 64--78.
+[37] M.~Copik, G.~Kwasniewski, M.~Besta, M.~Podstawski, and T.~Hoefler, ``SeBS: A serverless benchmark suite for function-as-a-service computing,'' in \emph{Proceedings of the 22nd International Middleware Conference}, ser. Middleware '21, p. 64--78.
 \end{quote}
 
 \evidencefigure{figures/fig_ratio_stability_grid.pdf}{Revised Figure 2: CPU and memory usage across request inputs for serverless functions.}
@@ -334,7 +334,7 @@ Compared with COSMOS, Golgi also recognizes function-level and request-level res
 We also added Golgi as a baseline in the experiments. The results show that COSMOS outperforms Golgi and the other baselines at moderate and high offered loads, while Golgi generally incurs higher tail latency under light load due to its more aggressive overcommitment. Because COSMOS does not support intra-instance task concurrency, we implemented two Golgi-based baselines for a more comprehensive~comparison:
 
 \begin{revisionquote}
-Since COSMOS does not support intra-instance task concurrency, we evaluate two implementations: Golgi, which approximates concurrency control in Golgi by adjusting instance resource allocations, and Golgi-NoCC, which omits this mechanism. The original Golgi study reports that disabling concurrency control changes performance by at most 14\%~[43], suggesting that performance monitoring and Mondrian Forest-based routing account for most of the system~advantages.''
+``Since COSMOS does not support intra-instance task concurrency, we evaluate two implementations: Golgi, which approximates concurrency control in Golgi by adjusting instance resource allocations, and Golgi-NoCC, which omits this mechanism. The original Golgi study reports that disabling concurrency control changes performance by at most 14\%~[43], suggesting that performance monitoring and Mondrian Forest-based routing account for most of the system~advantages.''
 \end{revisionquote}
 
 \begin{quote}\small

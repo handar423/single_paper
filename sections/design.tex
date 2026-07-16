@@ -130,7 +130,7 @@ complementary routing and proportional workload distribution simultaneously.
 
     \State \textbf{// Step 3: Generate $\mathcal{P}$ from $L$}
     \For{$F_i \in \mathcal{F}$}
-        \State $p_{\text{start}} \gets 0.0$ \Comment To store workload percentile range
+        \State $p_{\text{start}} \gets 0.0$ \Comment{Store the workload percentile range}
         \For{$N_j \in \mathcal{N}$, where $L[j,i] > 0$, in random order}
             \State // We use half-open intervals $[p_s, p_e)$, except the last interval which is closed at $1$.
             \State $\mathcal{P}(F_i, [p_{\text{start}}, p_{\text{start}} + L[j,i])) \gets N_j$ 
@@ -249,7 +249,7 @@ to Node C.
 \end{itemize}
 \Ensure Swap capacity $\alpha^{\text{swap}}$, internal swap list $\mathcal{S} = [ (F_k, \beta_k) ]$
 \State $\alpha^{\text{swap}} \gets 0$, $\mathcal{S} \gets [\,]$, $\{F_k\} \gets \{F_k | L[j, k] > 0\}$
-\If{$C_j^{\text{idle,cpu}} > 0$} \Comment Determine dominant idle resource
+\If{$C_j^{\text{idle,cpu}} > 0$} \Comment{Determine the dominant idle resource}
     \State // Replace more memory-intensive first
     \State sort $\{F_k\}$ by $r_k$ \textbf{ascending} ; $\text{sign} \gets +1$
 \Else \Comment{ $C_j^{\text{idle,mem}} > 0$ }
@@ -316,7 +316,7 @@ the routing algorithm employs an incremental (partial) update mechanism. Rather
 than recomputing the full routing plan from scratch for every scheduling window, the 
 system periodically monitors the latest 
 demand profiles $\langle r_i, \mathbf{V}_i, D_i \rangle$ of all functions. For 
-a function whose aggregate demand $\mathbf{V}_i$ has not increased and demand 
+a function whose aggregate demand $\mathbf{V}_i$ has not increased and whose demand
 distribution $D_i$ remains statistically stable, the algorithm preserves its 
 current placement. Only functions with significantly changed demand (increased 
 $\mathbf{V}_i$ or altered $D_i$) are fed into the complementary swarming algorithm 
