@@ -86,6 +86,8 @@ Yunshan Jia, Junyi Shu, Chiheng Lou, Fangyue Liu, Chenbo Bi, and Xin Jin
 
 We added empirical evidence in Section~II-B to validate this behavior. We use peak memory as the memory-demand metric because it determines the resource allocation required by a function instance:
 
+\evidencefigure{figures/fig_ratio_stability_grid.pdf}{Revised Figure 2: CPU and memory usage across request inputs for serverless functions.}
+
 \begin{revisionquote}
 ``Figure~2 further examines how CPU and memory usage co-vary as request inputs change. We randomly select ten functions from the open-source SeBS serverless benchmarking suite~[37], covering Web, multimedia, utility, machine-learning, and scientific workloads; their full names and characteristics are listed in Table~I. For each input, we measure the CPU time consumed and peak memory usage during task execution, averaged across repeated runs. Each point represents one input, and the red line is a per-function linear fit. The reported $R^2$ measures the goodness of fit, while CV is the coefficient of variation of the per-input CPU-to-peak-memory ratios. The figure omits graph-mst due to space because it closely matches graph-bfs ($R^2=0.996$, CV=27.9\%).
 
@@ -95,8 +97,6 @@ Eight of the ten benchmarks exhibit strong input-dependent CPU--memory coupling:
 \begin{quote}\small
 [37] M.~Copik, G.~Kwasniewski, M.~Besta, M.~Podstawski, and T.~Hoefler, ``Sebs: A serverless benchmark suite for function-as-a-service computing,'' in \emph{Proceedings of the 22nd International Middleware Conference}, ser. Middleware '21, p. 64--78.
 \end{quote}
-
-\evidencefigure{figures/fig_ratio_stability_grid.pdf}{Revised Figure 2: CPU and memory usage across request inputs for serverless functions.}
 
 The transformer example raised by the reviewer further illustrates why function boundaries matter. Prefill--decode disaggregation has become a mainstream design in modern LLM serving systems, as exemplified by DistServe (OSDI~'24). In this design, the prefill and decoding stages are deployed as separate, independently scalable components. If these stages are represented as separate serverless functions, the prefill function and decoding function each have a relatively consistent resource profile, even though the complete inference application contains both compute-intensive and memory-intensive stages. Accordingly, we clarified the rationale, applicability, and boundary of the resource-profile model in Section~VII:
 
@@ -123,12 +123,12 @@ However, this synchronized worst case is empirically difficult to reach because 
 
 First, we measure minute-level cold-start rate and 99th-percentile tail latency during a representative burst. The results show that COSMOS incurs fewer cold starts, has a smaller latency spike, and recovers faster than the baselines:
 
+\evidencefigure[0.5\linewidth]{figures/fig_temporal_coldstart_latency.pdf}{Revised Figure 11: Minute-level cold-start rate and 99th-percentile tail latency under bursty load and routing-plan updates.}
+
 \begin{revisionquote}
 ``Figure~11 shows the minute-level cold-start rate and 99th-percentile tail latency after excluding the first five minutes of system warm-up. \ldots{} Between minutes 26 and 28, the invocation rate of \textbf{graph-pagerank} rises by about $5\times$. This burst is particularly challenging because \textbf{graph-pagerank} is among the most resource-demanding benchmarks. As shown in the figure, the burst
 causes sharp increases in both cold starts and tail latency for all systems. Nevertheless, COSMOS incurs fewer cold starts and a smaller latency spike than the baselines, and its tail latency quickly returns toward its pre-burst level. In contrast, the baselines retain elevated tail latency and recover more slowly.''
 \end{revisionquote}
-
-\evidencefigure{figures/fig_temporal_coldstart_latency.pdf}{Revised Figure 11: Minute-level cold-start rate and 99th-percentile tail latency under bursty load and routing-plan updates.}
 
 Second, we quantify the pod-eviction frequency observed during the same burst experiment. COSMOS has the lowest pod-eviction rate among all evaluated systems:
 
@@ -303,7 +303,7 @@ The current model does not directly support a complex function whose resource pr
 In addition, we revised the Related Work to clarify the distinction between COSMOS and Golgi:
 
 \begin{revisionquote}
-``Golgi~[43] uses overcommitment to maintain differently sized instances of each function and favors the most recently accessed instance when routing. However, these approaches do not explicitly consider the instance-reuse benefit of concentrating a function's load on fewer nodes.''
+``In contrast, COSMOS models demand to coordinate resource allocation and function-load partitioning, mitigating fragmentation and burst-induced performance variation. Golgi~[43] maintains differently sized, overcommitted instances but routes requests solely by latency predictions and online performance statistics. This reactive design is sensitive to transient variations and forgoes resource-profile-aware instance reuse.''
 \end{revisionquote}
 
 \begin{quote}\small
@@ -313,21 +313,22 @@ In addition, we revised the Related Work to clarify the distinction between COSM
 \begin{reviewcomment}
 \textbf{Comment 2.2:} It would be better to clarify the novelty. Each design components, i.e., request routing, resource-aware placement, and in-place vertical scaling--- do not appear entirely new in isolation. For example, in terms of request routing, I think it is almost similar to Golgi. It would be better to clear which part constitutes the real technical novelty, and which part is mainly an integration of existing ideas. I would encourage the authors to sharpen this distinction; otherwise, it will be difficult to know what the real contribution is. Further, the performance breakdown of COSMOS helps understand each components' performance gains.
 \end{reviewcomment}
-\response{2.2} Thank you for your suggestion. We agree that the individual mechanisms used by COSMOS, such as request routing, resource-aware placement, and vertical scaling, are not entirely new in isolation. We revised the manuscript to clarify that the technical novelty of COSMOS lies in modeling function-level and request-level resource-demand heterogeneity in serverless workloads, and proactively using this model to guide resource allocation and load partitioning. We clarified this point in Section~I:
+\response{2.2} Thank you for your suggestion. We agree that the individual mechanisms used by COSMOS, such as request routing, resource-aware placement, and vertical scaling, are not entirely new in isolation. The technical novelty of COSMOS lies in \textbf{proactively} modeling function-level and request-level resource-demand heterogeneity and using this model to jointly guide inter-node resource allocation and intra-node load partitioning.
+
+This proactive approach is not a trivial change from making decisions reactively: it requires resource demand to be modeled reliably before a request executes and requires the resulting model to coordinate decisions at both the inter-node and intra-node levels. This modeling choice is inspired by the decomposition characteristic of serverless computing. Decomposing complex, stateful applications into fine-grained, dedicated, stateless functions offers an opportunity to characterize resource-use patterns and their input-dependent variation at the function level. Based on this observation, COSMOS models both cross-function resource diversity and within-function demand variation, then incorporates them into complementary swarming and monotonic scale-up scheduling. We clarified this point in Section~I:
 
 \begin{revisionquote}
-``To overcome these inefficiencies, we design COSMOS to proactively model and exploit two complementary sources of heterogeneity: resource-demand diversity across functions and dynamic demand variation within each function. At the inter-node level, we introduce complementary swarming, a function request routing strategy that mitigates resource stranding by co-locating functions with opposing resource requirements while preserving locality. At the intra-node level, we design a monotonic scale-up request scheduling policy that reorders the request queue for a function to enforce monotonic resource adjustment that avoids the high overhead of instance restarts. Together, these techniques align resource allocation with modeled demand and significantly improve cluster utilization.''
+``To overcome these inefficiencies, we design COSMOS to proactively model and exploit two complementary sources of heterogeneity: resource-demand diversity across functions and dynamic demand variation within each function. This design is inspired by the serverless practice of decomposing complex, stateful applications into fine-grained, dedicated, stateless functions, which offers an opportunity to characterize resource-use patterns and their input-dependent variation at the function level. At the inter-node level, we introduce complementary swarming, a function request routing strategy that mitigates resource stranding by co-locating functions with opposing resource requirements while preserving locality. At the intra-node level, we design a monotonic scale-up request scheduling policy that reorders the request queue for a function to enforce monotonic resource adjustment that avoids the high overhead of instance restarts. Together, these techniques align resource allocation with modeled demand and significantly improve cluster utilization.''
 \end{revisionquote}
 
-Compared with COSMOS, Golgi also recognizes function-level and request-level resource-demand heterogeneity, but it uses a reactive scheduling design: it monitors low-level runtime metrics and uses performance prediction to route requests between instances with different resource quotas, thereby avoiding performance loss from resource contention. 
-At the cluster level, Golgi favors recently used instances to reduce idle instance footprint. However, this strategy does not explicitly exploit resource complementarity across functions or the instance-reuse benefit of concentrating each function's load on fewer nodes, which is one of the main performance advantages of COSMOS. We clarified the distinction in the experimental setup and Related Work sections:
+Compared with COSMOS, Golgi also recognizes function-level and request-level resource-demand heterogeneity, but its request routing among differently sized instances depends entirely on per-request latency predictions and online function-performance statistics. Because these decisions react to current predictions and observations, they are sensitive to transient prediction and runtime variations. Moreover, Golgi does not exploit available resource profiles to coordinate function-load partitioning and instance reuse proactively. In contrast, COSMOS uses its resource-demand model to guide both inter-node resource allocation and intra-node load partitioning before execution. We clarified this distinction in the experimental setup and Related Work sections:
 
 \begin{revisionquote}
 ``Golgi~[43]: Golgi monitors instance performance using low-level runtime metrics and employs Mondrian Forest models to route requests between overcommitted and non-overcommitted instances. ''
 \end{revisionquote}
 
 \begin{revisionquote}
-``Golgi~[43] uses overcommitment to maintain differently sized instances of each function and favors the most recently accessed instance when routing. However, these approaches do not explicitly consider the instance-reuse benefit of concentrating a function's load on fewer nodes. ''
+``In contrast, COSMOS models demand to coordinate resource allocation and function-load partitioning, mitigating fragmentation and burst-induced performance variation. Golgi~[43] maintains differently sized, overcommitted instances but routes requests solely by latency predictions and online performance statistics. This reactive design is sensitive to transient variations and forgoes resource-profile-aware instance reuse.''
 \end{revisionquote}
 
 We also added Golgi as a baseline in the experiments. The results show that COSMOS outperforms Golgi and the other baselines at moderate and high offered loads, while Golgi generally incurs higher tail latency under light load due to its more aggressive overcommitment. Because COSMOS does not support intra-instance task concurrency, we implemented two Golgi-based baselines for a more comprehensive~comparison:
@@ -389,6 +390,8 @@ First, regarding the workload trace used in our experiments, we regenerated the 
 ``Between minutes 26 and 28, the invocation rate of \textbf{graph-pagerank} rises by about $5\times$. This burst is particularly challenging because \textbf{graph-pagerank} is among the most resource-demanding benchmarks.''
 \end{revisionquote}
 
+\evidencefigure[0.52\linewidth]{figures/fig_overhead_combined.pdf}{Revised Figure 18: Routing-plan generation and task-scheduling overhead under different cluster sizes and application workloads.}
+
 \begin{revisionquote}
 ``We evaluate the overhead of the COSMOS scheduler under varying cluster sizes and user traffic. To do so, we simulate scheduler load for clusters ranging from 32 to 1024 worker nodes, scaling function load proportionally with cluster size and sweeping each cluster up to 150\% offered load. The experimental results are presented in Figure~18.
 
@@ -397,9 +400,9 @@ The upper panel of Figure~18 shows the average duration for COSMOS to generate c
 The lower panel of Figure~18 shows the scheduling overhead for individual tasks under different scenarios. It should be noted that routing plan generation is performed by a separate background process within the scheduler. The main scheduling process only receives the resulting routing plan and assigns tasks accordingly. Therefore, only the scheduling overhead contributes to the additional latency in the end-to-end task execution path. As shown, even with 1024 worker nodes under heavy load, the extra scheduling delay added by COSMOS remains below 2.5 ms. This overhead is negligible for the vast majority of FaaS scenarios, confirming that the scheduling logic of COSMOS remains computationally lightweight at large cluster scales.''
 \end{revisionquote}
 
-\evidencefigure[0.52\linewidth]{figures/fig_overhead_combined.pdf}{Revised Figure 18: Routing-plan generation and task-scheduling overhead under different cluster sizes and application workloads.}
-
 Second, to more clearly investigate how COSMOS behaves when a sudden load shift makes a periodically generated routing plan stale, we set the routing-plan update interval to five minutes and evaluate how the system handles the bursty episode:
+
+\evidencefigure[0.52\linewidth]{figures/fig_temporal_coldstart_latency.pdf}{Revised Figure 11: Minute-level cold-start rate and 99th-percentile tail latency under bursty load and routing-plan updates.}
 
 \begin{revisionquote}
 ``Figure~11 shows the minute-level cold-start rate and 99th-percentile tail latency after excluding the first five minutes of system warm-up. We present results at 45\% offered load because the baselines already exhibit substantial request backlogs at 100\% load.
@@ -408,8 +411,6 @@ Between minutes 26 and 28, the invocation rate of \textbf{graph-pagerank} rises 
 
 This difference arises because complementary swarming confines individual function demand fluctuations to a small subset of servers, while the resulting resource-complementary load mix mitigates intra-server resource contention. Together, these properties limit both the cluster-wide impact of a burst and its performance interference with other functions. The baselines lack this isolation, allowing burst-induced contention and request backlogs to affect more servers and prolong latency recovery. For sustained workload changes, COSMOS revises the cluster load partition at the next routing-plan update to realign resources with demand.''
 \end{revisionquote}
-
-\evidencefigure[0.52\linewidth]{figures/fig_temporal_coldstart_latency.pdf}{Revised Figure 11: Minute-level cold-start rate and 99th-percentile tail latency under bursty load and routing-plan updates.}
 
 We also clarified the configurability of the routing-plan update period in the implementation section:
 
@@ -462,28 +463,19 @@ We also added Golgi comparison results to the fine-grained performance analysis,
 
 Also, the evaluation seems to assume accurate demand knowledge: it obtains ``accurate demand estimates'' from benchmark input characteristics, but does not justify how such estimates would be available in realistic deployments, or evaluate what happens when demand prediction is noisy, stale, or wrong. In addition, the evaluation assumes that CPU demand scales proportionally with a fixed CPU-to-memory ratio for each benchmark. I think the paper would be much stronger if it either justified why these assumptions are realistic for its target workloads, or included a robustness study showing how performance changes under imperfect demand estimation and non-constant per-request resource ratios.
 \end{reviewcomment}
-\response{3.2} Thank you for your comment. We first would like to clarify that the phrase ``accurate demand estimates'' in the initial submission was an overstatement, and we have revised the corresponding wording. What we intended to express is that COSMOS determines instance resource allocation based on the request resource demand, rather than on user-provided resource configurations, which are often over-provisioned. In our test environment and benchmarks, such request-level resource demand can be derived from request input data.
+\response{3.2} Thank you for your comment. This comment raises two related but distinct questions: whether the fixed CPU-to-memory ratio is valid for the target workloads, and whether COSMOS relies on unrealistically accurate demand knowledge. We address them in this order.
 
-Request-level resource-demand prediction itself is outside the scope of this paper. COSMOS focuses on using known function-level resource-demand characteristics to allocate resources for requests with intra-function heterogeneous demands, thereby avoiding frequent cold starts and structural resource fragmentation. The performance advantage of COSMOS over the baselines comes from reducing cold starts and resource fragmentation, not from a more accurate request-demand predictor; the latter is more closely related to resource-overcommitment topics. In fact, all evaluated systems in our experiments use the same request-demand prediction method (except for Golgi who has its own overcommitment strategy), and COSMOS differs from the baselines only in request routing and task scheduling. Therefore, we did not treat request-demand estimation accuracy as a separate robustness dimension. We clarified this boundary in the Discussion:
-
-\begin{revisionquote}
-``As shown in Section~IV-B, COSMOS requires cluster node capacities and function resource-demand information when constructing routing and scheduling decisions. Node capacities are normally available to the scheduler, whereas function resource-demand modeling requires measurements from historical executions. COSMOS also consumes predictions of future per-function load and request-level resource demand. These predictions can be supplied by any demand forecasting algorithm, but the algorithms themselves fall outside the scope of this paper. In the prototype system, we use an FFT-based prediction algorithm to forecast future load and employ first- to second-order linear fitting functions of request scale to predict per-request resource demands. These simple strategies have proven sufficient to meet the system requirements. Furthermore, COSMOS exhibits a certain tolerance towards inaccuracies in future load prediction, as shown in Figure~15.''
-\end{revisionquote}
-
-Since COSMOS is the only evaluated system that uses predictions of future per-function load to guide scheduling decisions, we additionally report the performance difference between COSMOS and the baselines under different levels of function-level load-prediction error. These results show that COSMOS's advantage over the baselines does not rely on exact future-load prediction:
+First, we agree that the fixed-ratio assumption should be empirically justified rather than simply asserted. The assumption is motivated by a characteristic of serverless computing: complex, stateful applications are commonly decomposed into fine-grained, dedicated, stateless functions. Because each function performs a well-defined task, request inputs often change the magnitude of its demand without qualitatively changing its resource-use pattern. We added an empirical characterization in Section~II-B:
 
 \begin{revisionquote}
-``Figure~15 compares COSMOS without injected prediction errors against variants with $\pm$10\% and $\pm$20\% random errors and $\pm$15\% systematic biases across offered loads. For a $\pm x\%$ random-error setting, we independently multiply each function's predicted load at every routing update by $1+\epsilon$, where $\epsilon$ is uniformly sampled from $[-x,x]$. For a $\pm y\%$ systematic-bias setting, every predicted function load is multiplied by the fixed factor $1+y$ or $1-y$, respectively. For readability, we show only Palette and FaaSCache as representative baselines. When offered load remains within cluster capacity, the impact of injected errors remains bounded because available resource slack can absorb moderate allocation inaccuracies: relative to the unperturbed setting, throughput deviates by at most 9.79\%, while CPU and memory utilization deviate by at most 13.70\% and 7.61\%, respectively. Once load exceeds cluster capacity, inaccurate predictions can create imbalanced allocations, producing less stable performance across load levels; independently sampled errors further amplify this variability across functions and routing-plan updates. Nevertheless, all prediction-error variants retain a clear and consistent advantage over the baselines, indicating that COSMOS's overall performance gains are robust to imperfect demand estimates.''
+``Figure~2 further examines how CPU and memory usage co-vary as request inputs change. We randomly select ten functions from the open-source SeBS serverless benchmarking suite~[37], covering Web, multimedia, utility, machine-learning, and scientific workloads; their full names and characteristics are listed in Table~I. For each input, we measure the CPU time consumed and peak memory usage during task execution, averaged across repeated runs. Each point represents one input, and the red line is a per-function linear fit. The reported $R^2$ measures the goodness of fit, while CV is the coefficient of variation of the per-input CPU-to-peak-memory ratios. The figure omits graph-mst due to space because it closely matches graph-bfs ($R^2=0.996$, CV=27.9\%).
+
+Eight of the ten benchmarks exhibit strong input-dependent CPU--memory coupling: their CPU and memory demands increase along a stable function-specific direction, with linear-fit $R^2$ values between 0.974 and 0.999 and ratio CVs from 5.2\% to 29.7\%. Thus, although inputs change demand magnitude, the relative CPU-to-peak-memory profile remains broadly stable and does not typically switch between compute- and memory-intensive behavior. This property follows naturally from the fine-grained, single-purpose design of serverless functions: each invocation performs a well-defined task, while complex applications are commonly decomposed into multiple such functions. The remaining two benchmarks, video-processing and uploader, exhibit a streaming pattern: peak memory remains nearly constant while CPU consumption grows with input size.''
 \end{revisionquote}
 
-\begin{center}
-\includegraphics[width=0.31\linewidth]{figures/fig_robustness_cpu.pdf}\hfill
-\includegraphics[width=0.31\linewidth]{figures/fig_robustness_mem.pdf}\hfill
-\includegraphics[width=0.31\linewidth]{figures/fig_robustness_throughput.pdf}\par
-\small\textbf{Revised Figure 15: Robustness under demand-prediction errors.}
-\end{center}
+\evidencefigure{figures/fig_ratio_stability_grid.pdf}{Revised Figure 2: CPU and memory usage across request inputs for serverless functions.}
 
-For the CPU-to-memory ratio assumption mentioned in this comment, we added an explicit scope analysis in the Discussion. It explains why the assumption is consistent with the serverless function-decomposition model, how single-resource-dominant functions can be represented conservatively, and why complex functions whose profiles change qualitatively across requests are not directly supported. We also added an empirical characterization of the resource-demand profiles of the open-source serverless benchmarks used in this paper:
+Based on this evidence, we also clarified the scope and boundary cases of the fixed-ratio model in the Discussion. Single-resource-dominant functions can be represented conservatively, whereas complex functions whose resource profiles change qualitatively across requests are not directly supported:
 
 \begin{revisionquote}
 ``Serverless computing commonly decomposes complex, stateful applications into fine-grained, dedicated, stateless functions that scale independently, with state externalized to storage services. Because each function performs a well-defined task, request inputs often change demand magnitude rather than its qualitative CPU-to-memory profile, as illustrated by eight of the ten functions in Figure~2. Motivated by this structure, COSMOS models each function with a stable CPU-to-memory demand ratio and a variable demand magnitude.
@@ -493,13 +485,27 @@ Single-resource-dominant functions, such as video-processing and uploader in Fig
 The current model does not directly support a complex function whose resource profile changes qualitatively across requests. Such a function could be divided into virtual functions by request type or refactored into dedicated stages, each with a stable profile. We leave direct support for such functions to future work.''
 \end{revisionquote}
 
-\begin{revisionquote}
-``Figure~2 further examines how CPU and memory usage co-vary as request inputs change. We randomly select ten functions from the open-source SeBS serverless benchmarking suite~[37], covering Web, multimedia, utility, machine-learning, and scientific workloads; their full names and characteristics are listed in Table~I. For each input, we measure the CPU time consumed and peak memory usage during task execution, averaged across repeated runs. Each point represents one input, and the red line is a per-function linear fit. The reported $R^2$ measures the goodness of fit, while CV is the coefficient of variation of the per-input CPU-to-peak-memory ratios. The figure omits graph-mst due to space because it closely matches graph-bfs ($R^2=0.996$, CV=27.9\%).
+Second, regarding demand knowledge, we clarify that the phrase ``accurate demand estimates'' in the initial submission was an overstatement, and we have revised the corresponding wording. For the target workloads described above, obtaining a useful request-level estimate is generally straightforward: we profile historical executions and fit first- to second-order functions from request scale to CPU and peak-memory demand. The stable profiles in Figure~2 explain why this simple procedure is sufficient for most evaluated functions.
 
-Eight of the ten benchmarks exhibit strong input-dependent CPU--memory coupling: their CPU and memory demands increase along a stable function-specific direction, with linear-fit $R^2$ values between 0.974 and 0.999 and ratio CVs from 5.2\% to 29.7\%. Thus, although inputs change demand magnitude, the relative CPU-to-peak-memory profile remains broadly stable and does not typically switch between compute- and memory-intensive behavior. This property follows naturally from the fine-grained, single-purpose design of serverless functions: each invocation performs a well-defined task, while complex applications are commonly decomposed into multiple such functions. The remaining two benchmarks, video-processing and uploader, exhibit a streaming pattern: peak memory remains nearly constant while CPU consumption grows with input size.''
+COSMOS does not assume access to an oracle estimator, nor does its performance advantage come from a predictor that is more accurate than those used by the baselines. All evaluated systems use the same request-level resource-demand estimation method, except Golgi, which retains its own overcommitment mechanism. COSMOS differs in how it uses the resulting estimates for request routing and task scheduling. We clarified these algorithm inputs and the prototype estimation procedure in the Discussion:
+
+\begin{revisionquote}
+``As shown in Section~IV-B, COSMOS requires cluster node capacities and function resource-demand information when constructing routing and scheduling decisions. Node capacities are normally available to the scheduler, whereas function resource-demand modeling requires measurements from historical executions. COSMOS also consumes predictions of future per-function load and request-level resource demand. These predictions can be supplied by any demand forecasting algorithm, but the algorithms themselves fall outside the scope of this paper. In the prototype system, we use an FFT-based prediction algorithm to forecast future load and employ first- to second-order linear fitting functions of request scale to predict per-request resource demands. These simple strategies have proven sufficient to meet the system requirements. Furthermore, COSMOS exhibits a certain tolerance towards inaccuracies in future load prediction, as shown in Figure~15.''
 \end{revisionquote}
 
-\evidencefigure{figures/fig_ratio_stability_grid.pdf}{Revised Figure 2: CPU and memory usage across request inputs for serverless functions.}
+Finally, we distinguish request-level demand estimation from future per-function load prediction. The former is shared by the evaluated systems, whereas COSMOS uniquely uses the latter to generate routing plans. We therefore additionally evaluate COSMOS under different levels of future-load prediction error. The results show that its advantage over the baselines does not rely on exact future-load prediction:
+
+\begin{revisionquote}
+``Figure~15 compares COSMOS without injected prediction errors against variants with $\pm$10\% and $\pm$20\% random errors and $\pm$15\% systematic biases across offered loads. For a $\pm x\%$ random-error setting, we independently multiply each function's predicted load at every routing update by $1+\epsilon$, where $\epsilon$ is uniformly sampled from $[-x,x]$. For a $\pm y\%$ systematic-bias setting, every predicted function load is multiplied by the fixed factor $1+y$ or $1-y$, respectively. For readability, we show only Palette and FaaSCache as representative baselines. When offered load remains within cluster capacity, the impact of injected errors remains bounded because available resource slack can absorb moderate allocation inaccuracies: relative to the unperturbed setting, throughput deviates by at most 9.79\%, while CPU and memory utilization deviate by at most 13.70\% and 7.61\%, respectively. Once load exceeds cluster capacity, inaccurate predictions can create imbalanced allocations, producing less stable performance across load levels; independently sampled errors further amplify this variability across functions and routing-plan updates. Nevertheless, all prediction-error variants retain a clear and consistent advantage over the baselines, indicating that COSMOS's overall performance gains are robust to imperfect demand estimates.''
+\end{revisionquote}
+
+\begin{center}
+\includegraphics[width=0.84\linewidth]{figures/fig_robustness_legend.pdf}\\[-6pt]
+\includegraphics[width=0.31\linewidth]{figures/fig_robustness_cpu.pdf}\hfill
+\includegraphics[width=0.31\linewidth]{figures/fig_robustness_mem.pdf}\hfill
+\includegraphics[width=0.31\linewidth]{figures/fig_robustness_throughput.pdf}\par
+\small\textbf{Revised Figure 15: Robustness under demand-prediction errors.}
+\end{center}
 
 \begin{reviewcomment}
 \textbf{Comment 3.3:} The scale-up scheduling avoids downscaling at the function level, but at a node level eviction may have to be triggered frequently if no downscaling is performed. It is not clear how much the proposed policy actually resolves the dynamic resource allocation problem, rather than shifting intra-function scaling overhead into inter-function contention and eviction pressure. I think the paper should better clarify this distinction and quantify how often scale-up can be absorbed by slack versus causing eviction or delayed execution.
@@ -536,13 +542,13 @@ Average rate (events/min) & 5.433 & 4.500 & 8.967 & 3.633 & \textbf{1.433} \\
 
 These results indicate that the scale-up mechanism does not introduce additional eviction pressure. Instead, by avoiding frequent cold starts and bidirectional resource-adjustment overhead, COSMOS improves resource-utilization efficiency and reduces resource contention, thereby reducing eviction pressure.
 
+\evidencefigure{figures/fig_instance_lifetime_cdf.pdf}{Revised Figure 14: Instance-lifetime distributions.}
+
 Finally, we report the function instance-lifetime statistics. COSMOS produces longer instance lifetimes across different functions, indicating that COSMOS improves instance reuse across different functions rather than increasing inter-function contention:
 
 \begin{revisionquote}
 ``Figure~14 compares the instance-lifetime distributions of four representative functions. \ldots{} Consistent with this result, the instance-lifetime CDFs in Figure~14 shift toward longer lifetimes under COSMOS. We observe the same trend for the remaining six functions. These results show that monotonic scale-up does not increase instance churn.''
 \end{revisionquote}
-
-\evidencefigure{figures/fig_instance_lifetime_cdf.pdf}{Revised Figure 14: Instance-lifetime distributions.}
 
 \vspace{12pt}
 % The third part of the final response package will append the complete revised
